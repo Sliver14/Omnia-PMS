@@ -8,8 +8,8 @@ interface StatusBadgeProps {
     | 'cleaning'
     | 'maintenance'
     | 'confirmed'
-    | 'checked-in'
-    | 'checked-out'
+    | 'checked_in'
+    | 'checked_out'
     | 'cancelled';
 }
 
@@ -19,8 +19,8 @@ const statusConfig = {
   cleaning: { label: 'Cleaning', color: 'bg-yellow-100 text-yellow-800' },
   maintenance: { label: 'Maintenance', color: 'bg-red-100 text-red-800' },
   confirmed: { label: 'Confirmed', color: 'bg-purple-100 text-purple-800' },
-  'checked-in': { label: 'Checked In', color: 'bg-blue-100 text-blue-800' },
-  'checked-out': { label: 'Checked Out', color: 'bg-gray-100 text-gray-800' },
+  checked_in: { label: 'Checked In', color: 'bg-blue-100 text-blue-800' },
+  checked_out: { label: 'Checked Out', color: 'bg-gray-100 text-gray-800' },
   cancelled: { label: 'Cancelled', color: 'bg-rose-100 text-rose-700' },
 };
 

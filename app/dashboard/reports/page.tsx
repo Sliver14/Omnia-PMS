@@ -1,8 +1,17 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { CalendarRange, TrendingUp, Users, DollarSign } from 'lucide-react';
-import { rooms } from '../../data/rooms';
+
+// Define Room interface directly here as a workaround for build issues
+export type RoomStatus = 'available' | 'occupied' | 'cleaning' | 'maintenance';
+
+export interface Room {
+  id: string;
+  type: string;
+  floor: number;
+  status: RoomStatus;
+}
 
 const revenueByMonth = [
   { month: 'Aug', revenue: 48000 },
@@ -11,18 +20,34 @@ const revenueByMonth = [
   { month: 'Nov', revenue: 54500 },
 ];
 
-const occupancy = [
-  { label: 'Available', value: rooms.filter(r => r.status === 'available').length },
-  { label: 'Occupied', value: rooms.filter(r => r.status === 'occupied').length },
-  { label: 'Cleaning', value: rooms.filter(r => r.status === 'cleaning').length },
-  { label: 'Maintenance', value: rooms.filter(r => r.status === 'maintenance').length },
-];
-
 export default function ReportsPage() {
+  const [rooms, setRooms] = useState<Room[]>([]);
+
+  useEffect(() => {
+    const fetchRooms = async () => {
+      const res = await fetch('/api/rooms');
+      const data: Room[] = await res.json();
+      setRooms(data);
+    };
+    fetchRooms();
+  }, []);
+
+  const occupancy = useMemo(() => {
+    if (rooms.length === 0) return [];
+    return [
+      { label: 'Available', value: rooms.filter(r => r.status === 'available').length },
+      { label: 'Occupied', value: rooms.filter(r => r.status === 'occupied').length },
+      { label: 'Cleaning', value: rooms.filter(r => r.status === 'cleaning').length },
+      { label: 'Maintenance', value: rooms.filter(r => r.status === 'maintenance').length },
+    ];
+  }, [rooms]);
+
   const totalRevenue = useMemo(
     () => revenueByMonth.reduce((sum, entry) => sum + entry.revenue, 0),
     []
   );
+
+  const totalRooms = rooms.length;
 
   return (
     <div className="space-y-6 text-gray-900">
@@ -50,7 +75,7 @@ export default function ReportsPage() {
             <div>
               <p className="text-sm text-gray-500">Avg. Occupancy</p>
               <p className="text-2xl font-semibold">
-                {Math.round((occupancy[1].value / rooms.length) * 100)}%
+                {totalRooms > 0 ? Math.round((occupancy.find(o => o.label === 'Occupied')?.value ?? 0 / totalRooms) * 100) : 0}%
               </p>
             </div>
             <TrendingUp className="w-8 h-8 text-purple-500" />
@@ -62,7 +87,7 @@ export default function ReportsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500">Housekeeping Load</p>
-              <p className="text-2xl font-semibold">{occupancy[2].value} rooms</p>
+              <p className="text-2xl font-semibold">{occupancy.find(o => o.label === 'Cleaning')?.value ?? 0} rooms</p>
             </div>
             <Users className="w-8 h-8 text-emerald-500" />
           </div>
@@ -103,7 +128,7 @@ export default function ReportsPage() {
                 <div className="flex-1 h-3 rounded-full bg-gray-100">
                   <div
                     className="h-3 rounded-full bg-purple-500"
-                    style={{ width: `${(segment.value / rooms.length) * 100}%` }}
+                    style={{ width: `${(segment.value / totalRooms) * 100}%` }}
                   />
                 </div>
                 <span className="w-12 text-sm font-semibold text-gray-800">

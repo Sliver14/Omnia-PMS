@@ -1,5 +1,6 @@
 'use client';
 
+import { useSession, signOut } from 'next-auth/react';
 import { Bell, Menu, Search, User, LogOut, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import Link from 'next/link';
@@ -10,8 +11,17 @@ interface TopbarProps {
 }
 
 export default function Topbar({ sidebarOpen, setSidebarOpen }: TopbarProps) {
+  const { data: session } = useSession();
+  const userRole = session?.user?.role;
+
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+
+  const handleLogout = () => {
+    const isAdminRole = userRole === 'admin' || userRole === 'frontdesk';
+    const callbackUrl = isAdminRole ? '/login' : '/staff/login';
+    signOut({ callbackUrl });
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-40">
@@ -84,8 +94,13 @@ export default function Topbar({ sidebarOpen, setSidebarOpen }: TopbarProps) {
               onClick={() => setProfileOpen(!profileOpen)}
               className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100"
             >
-              <div className="w-8 h-8 bg-gray-300 rounded-full"></div>
-              <span className="hidden md:block text-sm font-medium">Admin</span>
+              <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center font-bold">
+                {session?.user?.name?.charAt(0).toUpperCase()}
+              </div>
+              <div className="hidden md:flex flex-col items-start">
+                <span className="text-sm font-medium">{session?.user?.name}</span>
+                <span className="text-xs text-gray-500 capitalize">{userRole}</span>
+              </div>
               <ChevronDown className="w-4 h-4 hidden md:block" />
             </button>
 
@@ -99,7 +114,10 @@ export default function Topbar({ sidebarOpen, setSidebarOpen }: TopbarProps) {
                     <User className="w-4 h-4" />
                     <span className="text-sm">Profile</span>
                   </Link>
-                  <button className="w-full flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-red-600">
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-red-600"
+                  >
                     <LogOut className="w-4 h-4" />
                     <span className="text-sm">Logout</span>
                   </button>

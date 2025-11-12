@@ -4,63 +4,22 @@ import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { Calendar, User, DollarSign, Filter } from 'lucide-react';
 import { StatusBadge } from '../shared/StatusBadge';
-
-interface Booking {
-  id: string;
-  guestName: string;
-  room: string;
-  roomType: string;
-  checkIn: Date;
-  checkOut: Date;
-  status: 'confirmed' | 'checked-in' | 'checked-out' | 'cancelled';
-  price: number;
-}
-
-const mockBookings: Booking[] = [
-  {
-    id: '1',
-    guestName: 'John Doe',
-    room: '301',
-    roomType: 'Deluxe Suite',
-    checkIn: new Date(2025, 10, 12),
-    checkOut: new Date(2025, 10, 15),
-    status: 'checked-in',
-    price: 250,
-  },
-  {
-    id: '2',
-    guestName: 'Jane Smith',
-    room: '205',
-    roomType: 'Standard',
-    checkIn: new Date(2025, 10, 12),
-    checkOut: new Date(2025, 10, 14),
-    status: 'confirmed',
-    price: 120,
-  },
-  {
-    id: '3',
-    guestName: 'Mike Johnson',
-    room: '402',
-    roomType: 'Premium',
-    checkIn: new Date(2025, 10, 13),
-    checkOut: new Date(2025, 10, 16),
-    status: 'confirmed',
-    price: 180,
-  },
-];
+import type { Booking } from '../../types/booking';
 
 interface BookingListProps {
   search?: string;
+  bookings: Booking[];
+  onSelectBooking: (booking: Booking) => void;
 }
 
-export default function BookingList({ search = '' }: BookingListProps) {
+export default function BookingList({ search = '', bookings, onSelectBooking }: BookingListProps) {
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
   const filteredBookings = useMemo(() => {
     const term = search.toLowerCase();
-    return mockBookings.filter(booking => {
+    return bookings.filter(booking => {
       const matchesSearch =
-        booking.guestName.toLowerCase().includes(term) ||
+        booking.guest.name.toLowerCase().includes(term) ||
         booking.room.toLowerCase().includes(term) ||
         booking.roomType.toLowerCase().includes(term);
 
@@ -68,7 +27,7 @@ export default function BookingList({ search = '' }: BookingListProps) {
 
       return matchesSearch && matchesStatus;
     });
-  }, [search, filterStatus]);
+  }, [search, filterStatus, bookings]);
 
   return (
     <div className="bg-white text-gray-900 rounded-xl shadow-sm border border-gray-200">
@@ -83,8 +42,8 @@ export default function BookingList({ search = '' }: BookingListProps) {
           >
             <option value="all">All Status</option>
             <option value="confirmed">Confirmed</option>
-            <option value="checked-in">Checked In</option>
-            <option value="checked-out">Checked Out</option>
+            <option value="checked_in">Checked In</option>
+            <option value="checked_out">Checked Out</option>
             <option value="cancelled">Cancelled</option>
           </select>
         </div>
@@ -127,7 +86,7 @@ export default function BookingList({ search = '' }: BookingListProps) {
                       <User className="w-5 h-5 text-gray-600" />
                     </div>
                     <div>
-                      <div className="text-sm font-medium text-gray-900">{booking.guestName}</div>
+                      <div className="text-sm font-medium text-gray-900">{booking.guest.name}</div>
                     </div>
                   </div>
                 </td>
@@ -140,7 +99,7 @@ export default function BookingList({ search = '' }: BookingListProps) {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 hidden sm:table-cell">
                   <div className="flex items-center gap-1">
                     <Calendar className="w-4 h-4 text-gray-400" />
-                    {format(booking.checkIn, 'MMM d')} – {format(booking.checkOut, 'MMM d')}
+                    {format(booking.start, 'MMM d')} – {format(booking.end, 'MMM d')}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 hidden md:table-cell">
@@ -153,8 +112,7 @@ export default function BookingList({ search = '' }: BookingListProps) {
                   <StatusBadge status={booking.status} />
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button className="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
-                  <button className="text-red-600 hover:text-red-900">Delete</button>
+                  <button onClick={() => onSelectBooking(booking)} className="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
                 </td>
               </tr>
             ))}

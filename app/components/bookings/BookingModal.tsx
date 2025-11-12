@@ -1,9 +1,8 @@
-'use client';
-
-import React, { useState, useEffect } from 'react';
-import { format, addDays } from 'date-fns';
-import { X, Save, Trash2, LogIn, LogOut } from 'lucide-react';
-import type { Booking, Guest } from '@/types/booking';
+"use client"
+import React, { useState, useEffect } from "react";
+import { addDays, format, startOfDay } from 'date-fns';
+import { X } from "lucide-react";
+import { Save } from "lucide-react";
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -13,20 +12,15 @@ interface BookingModalProps {
   onSave: (booking: Booking) => void;
   onDelete: (id: string) => void;
   onCheckIn: (id: string) => void;
-  onCheckOut: (id: string) => void;
+  onCheckOut: (bookingId: string, roomId: string) => void; // Modified to pass roomId
 }
 
-const roomOptions = [
-  { value: '301', label: '301 - Deluxe Suite', type: 'Deluxe Suite' },
-  { value: '205', label: '205 - Standard', type: 'Standard' },
-  { value: '402', label: '402 - Premium', type: 'Premium' },
-];
-
+// Helper to create initial form state
 const createInitialForm = (seedDate?: Date | null): Partial<Booking> => {
   const baseDate = seedDate ?? new Date();
   return {
     start: baseDate,
-    end: addDays(baseDate, 2),
+    end: addDays(baseDate, 1), // Default to one night
     room: '',
     roomType: '',
     guest: { name: '', email: '', phone: '' },
@@ -47,10 +41,24 @@ export default function BookingModal({
   onCheckOut,
 }: BookingModalProps) {
   const [form, setForm] = useState<Partial<Booking>>(() => createInitialForm(defaultDate));
+  const [allRooms, setAllRooms] = useState<Room[]>([]); // State to store all rooms
+  const [errorMessage, setErrorMessage] = useState<string>(''); // State for error messages
 
+  // Fetch all rooms on component mount
   useEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect */
+    const fetchRooms = async () => {
+      const res = await fetch('/api/rooms');
+      const data: Room[] = await res.json();
+      setAllRooms(data);
+    };
+    fetchRooms();
+  }, []);
+
+  // Effect to reset form when modal opens or booking/defaultDate changes
+  useEffect(() => {
     if (!isOpen) return;
+
+    setErrorMessage(''); // Clear error on open
 
     if (booking) {
       setForm(booking);
@@ -61,19 +69,28 @@ export default function BookingModal({
       setForm(prev => ({
         ...prev,
         start: defaultDate,
-        end: addDays(defaultDate, 2),
+        end: addDays(defaultDate, 1), // Default to one night
       }));
       return;
     }
 
     setForm(createInitialForm());
-    /* eslint-enable react-hooks/set-state-in-effect */
   }, [booking, defaultDate, isOpen]);
 
   if (!isOpen) return null;
 
   const currentStart = form.start ?? new Date();
-  const currentEnd = form.end ?? addDays(currentStart, 2);
+  const currentEnd = form.end ?? addDays(currentStart, 1); // Ensure one night default
+
+  // Filter available rooms for selection
+  const availableRoomOptions = allRooms
+    .filter(room => room.status === 'available' || room.id === form.room) // Include current room if editing
+    .map(room => ({
+      value: room.id,
+      label: `${room.id} - ${room.type} ($${room.price.toFixed(2)})`,
+      type: room.type,
+      price: room.price,
+    }));
 
   const handleGuestChange = (field: keyof Guest, value: string) => {
     setForm(prev => ({
@@ -82,10 +99,38 @@ export default function BookingModal({
     }));
   };
 
-  const handleSubmit = () => {
-    if (!form.room || !form.guest?.name || !currentStart || !currentEnd) return;
+  const handleRoomChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedRoomId = e.target.value;
+    const selectedRoom = allRooms.find(r => r.id === selectedRoomId);
+    if (selectedRoom) {
+      setForm(prev => ({
+        ...prev,
+        room: selectedRoom.id,
+        roomType: selectedRoom.type,
+        price: selectedRoom.price, // Auto-fill price
+      }));
+    } else {
+      setForm(prev => ({ ...prev, room: '', roomType: '', price: 0 }));
+    }
+  };
 
-    const selectedRoom = roomOptions.find(r => r.value === form.room);
+  const handleSubmit = () => {
+    setErrorMessage(''); // Clear previous errors
+
+    if (!form.room || !form.guest?.name || !currentStart || !currentEnd) {
+      setErrorMessage('Please fill in all required fields.');
+      return;
+    }
+
+    // Validate start date is not in the past
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Normalize today's date to start of day
+    if (currentStart < today && !booking?.id) { // Allow editing past bookings, but not creating new ones
+      setErrorMessage('Booking start date cannot be in the past.');
+      return;
+    }
+
+    const selectedRoom = allRooms.find(r => r.id === form.room);
     const bookingPayload: Booking = {
       id: booking?.id ?? Date.now().toString(),
       title: `${form.guest.name} – ${form.room}`,
@@ -144,10 +189,14 @@ export default function BookingModal({
             <input
               type="tel"
               value={form.guest?.phone || ''}
-              onChange={e => handleGuestChange('phone', e.target.value)}
+              onChange={e => {
+                const value = e.target.value.replace(/[^0-9+]/g, '');
+                handleGuestChange('phone', value);
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-              placeholder="+123456789"
+              placeholder="08123456789"
             />
+
           </div>
 
           {/* Room & Dates */}
@@ -156,14 +205,11 @@ export default function BookingModal({
               <label className="block text-sm font-medium text-gray-700 mb-1">Room</label>
               <select
                 value={form.room || ''}
-                onChange={e => {
-                  const room = roomOptions.find(r => r.value === e.target.value);
-                  setForm({ ...form, room: e.target.value, roomType: room?.type || '' });
-                }}
+                onChange={handleRoomChange} // Use new handler
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
               >
                 <option value="">Select room</option>
-                {roomOptions.map(r => (
+                {availableRoomOptions.map(r => (
                   <option key={r.value} value={r.value}>{r.label}</option>
                 ))}
               </select>
@@ -174,6 +220,7 @@ export default function BookingModal({
                 type="date"
                 value={format(currentStart, 'yyyy-MM-dd')}
                 onChange={e => setForm(prev => ({ ...prev, start: new Date(e.target.value) }))}
+                min={format(new Date(), 'yyyy-MM-dd')} // Disable past dates
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
               />
             </div>
@@ -194,8 +241,8 @@ export default function BookingModal({
               <input
                 type="number"
                 value={form.price || ''}
-                onChange={e => setForm(prev => ({ ...prev, price: Number(e.target.value) }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                readOnly // Make price read-only
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed"
                 placeholder="150"
               />
             </div>
@@ -209,8 +256,8 @@ export default function BookingModal({
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
               >
                 <option value="confirmed">Confirmed</option>
-                <option value="checked-in">Checked In</option>
-                <option value="checked-out">Checked Out</option>
+                <option value="checked_in">Checked In</option>
+                <option value="checked_out">Checked Out</option>
                 <option value="cancelled">Cancelled</option>
               </select>
             </div>
@@ -226,6 +273,12 @@ export default function BookingModal({
               placeholder="Any special requests..."
             />
           </div>
+          {errorMessage && (
+            <div className="flex items-center gap-2 p-3 bg-red-50 text-red-700 rounded-lg text-sm">
+              <X className="w-4 h-4" />
+              {errorMessage}
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-between p-6 border-t border-gray-200">
@@ -241,9 +294,9 @@ export default function BookingModal({
                     Check In
                   </button>
                 )}
-                {booking.status === 'checked-in' && (
+                {booking.status === 'checked_in' && (
                   <button
-                    onClick={() => onCheckOut(booking.id)}
+                    onClick={() => onCheckOut(booking.id, booking.room)} // Pass booking.id and booking.room
                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                   >
                     <LogOut className="w-4 h-4" />

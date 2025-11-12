@@ -1,0 +1,26 @@
+[
+    {
+      "id": 1,
+      "username": "admin",
+      "password": "$2b$10$xWm4VtfAtGcYgkW7GacSbOof5ohkwREebAbC5ocdwt/QF2tvi2bBa",
+      "role": "admin"
+    },
+    {
+      "id": 2,
+      "username": "frontdesk",
+      "password": "$2b$10$v1iR3QLjBoc/fvKx0wqxlO0YgF5bxAL8bXMNkLYpwJL4RCwmdF.x.",
+      "role": "frontdesk"
+    },
+    {
+      "id": 3,
+      "username": "housekeeper",
+      "password": "$2b$10$h8Z79KkTh7sRu7B6GLt6o.x3AMmb28/xBPhp36c5L1PAVrg4ea.ae",
+      "role": "housekeeping"
+    },
+    {
+      "id": 4,
+      "username": "maintenance",
+      "password": "$2b$10$J2QnKb/9SLa3wobp5PYAm.wXRcybwdMjv4JjdRKRo1MSRTi/stlve",
+      "role": "maintenance"
+    }
+  ]

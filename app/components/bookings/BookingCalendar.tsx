@@ -6,47 +6,10 @@ import type { SlotInfo } from 'react-big-calendar';
 import moment from 'moment';
 import { addDays, format, startOfDay } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import BookingModal from './BookingModal';
-import type { Booking } from '@/types/booking';
+import type { Booking } from '../../types/booking';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 const localizer = momentLocalizer(moment);
-
-const mockBookings: Booking[] = [
-  {
-    id: '1',
-    title: 'John Doe – 301',
-    start: new Date(2025, 10, 12),
-    end: new Date(2025, 10, 15),
-    room: '301',
-    roomType: 'Deluxe Suite',
-    guest: { name: 'John Doe', email: 'john@example.com', phone: '+123456789' },
-    status: 'checked-in',
-    price: 250,
-  },
-  {
-    id: '2',
-    title: 'Jane Smith – 205',
-    start: new Date(2025, 10, 12),
-    end: new Date(2025, 10, 14),
-    room: '205',
-    roomType: 'Standard',
-    guest: { name: 'Jane Smith', email: 'jane@example.com', phone: '+198765432' },
-    status: 'confirmed',
-    price: 120,
-  },
-  {
-    id: '3',
-    title: 'Mike Johnson – 402',
-    start: new Date(2025, 10, 13),
-    end: new Date(2025, 10, 16),
-    room: '402',
-    roomType: 'Premium',
-    guest: { name: 'Mike Johnson', email: 'mike@example.com', phone: '+112233445' },
-    status: 'confirmed',
-    price: 180,
-  },
-];
 
 const roomColors: Record<string, string> = {
   'Deluxe Suite': '#7c3aed',
@@ -57,15 +20,13 @@ const roomColors: Record<string, string> = {
 
 interface BookingCalendarProps {
   search?: string;
+  bookings: Booking[];
+  onSelectBooking: (booking: Booking | null) => void;
 }
 
-export default function BookingCalendar({ search = '' }: BookingCalendarProps) {
-  const [bookings, setBookings] = useState<Booking[]>(mockBookings);
+export default function BookingCalendar({ search = '', bookings, onSelectBooking }: BookingCalendarProps) {
   const [view, setView] = useState<View>('month');
   const [date, setDate] = useState(new Date());
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
-  const [selectedSlotDate, setSelectedSlotDate] = useState<Date | null>(null);
 
   const events = useMemo(
     () =>
@@ -90,61 +51,19 @@ export default function BookingCalendar({ search = '' }: BookingCalendarProps) {
 
   const handleSelectSlot = useCallback(
     ({ start }: SlotInfo) => {
-      setSelectedSlotDate(startOfDay(start as Date));
-      setSelectedBooking(null);
-      setModalOpen(true);
+      // This would ideally open the modal for a new booking on a specific date.
+      // For now, we'll just log it. The parent component handles modal opening.
+      console.log('Selected slot:', start);
     },
     []
   );
 
   const handleSelectEvent = useCallback(
     (event: Booking) => {
-      const booking = bookings.find(b => b.id === event.id);
-      if (booking) {
-        setSelectedBooking(booking);
-        setSelectedSlotDate(null);
-        setModalOpen(true);
-      }
+      onSelectBooking(event);
     },
-    [bookings]
+    [onSelectBooking]
   );
-
-  const handleSave = useCallback((saved: Booking) => {
-    setBookings(prev => {
-      const exists = prev.some(b => b.id === saved.id);
-      if (exists) {
-        return prev.map(b => (b.id === saved.id ? saved : b));
-      }
-      return [...prev, saved];
-    });
-    setModalOpen(false);
-    setSelectedBooking(null);
-    setSelectedSlotDate(null);
-  }, []);
-
-  const handleDelete = useCallback((id: string) => {
-    setBookings(prev => prev.filter(b => b.id !== id));
-    setModalOpen(false);
-    setSelectedBooking(null);
-  }, []);
-
-  const handleCheckIn = useCallback((id: string) => {
-    setBookings(prev =>
-      prev.map(b => (b.id === id ? { ...b, status: 'checked-in' } : b))
-    );
-  }, []);
-
-  const handleCheckOut = useCallback((id: string) => {
-    setBookings(prev =>
-      prev.map(b => (b.id === id ? { ...b, status: 'checked-out' } : b))
-    );
-  }, []);
-
-  const handleCloseModal = useCallback(() => {
-    setModalOpen(false);
-    setSelectedBooking(null);
-    setSelectedSlotDate(null);
-  }, []);
 
   const eventStyleGetter = useCallback((event: Booking) => {
     const backgroundColor = roomColors[event.roomType] ?? '#6b7280';
@@ -230,17 +149,6 @@ export default function BookingCalendar({ search = '' }: BookingCalendarProps) {
           }}
         />
       </div>
-
-      <BookingModal
-        isOpen={modalOpen}
-        onClose={handleCloseModal}
-        booking={selectedBooking}
-        defaultDate={selectedSlotDate}
-        onSave={handleSave}
-        onDelete={handleDelete}
-        onCheckIn={handleCheckIn}
-        onCheckOut={handleCheckOut}
-      />
     </div>
   );
 }

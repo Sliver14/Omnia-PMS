@@ -1,9 +1,23 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import { Bed } from 'lucide-react';
 import { StatusBadge } from '../../components/shared/StatusBadge';
 import type { RoomFilterState } from './RoomFilters';
-import { rooms } from '../../data/rooms';
+import type { Room } from '../../types/booking';
 
 export default function RoomGrid({ filters }: { filters: RoomFilterState }) {
+  const [rooms, setRooms] = useState<Room[]>([]);
+
+  useEffect(() => {
+    const fetchRooms = async () => {
+      const res = await fetch('/api/rooms');
+      const data: Room[] = await res.json();
+      setRooms(data);
+    };
+    fetchRooms();
+  }, []);
+
   const filtered = rooms.filter(room => {
     if (filters.status !== 'all' && room.status !== filters.status) return false;
     if (filters.type !== 'all' && room.type !== filters.type) return false;

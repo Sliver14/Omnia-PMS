@@ -1,11 +1,13 @@
 'use client';
 
+import { useSession } from 'next-auth/react';
+import { useState, useEffect } from 'react';
 import type { ElementType } from 'react';
 import { Home, Bed, Calendar, Users, Wrench, FileText, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '../lib/utils';
-import { rooms } from '../data/rooms';
+import type { Room } from '../../types/room';
 
 interface NavItem {
   icon: ElementType;
@@ -20,12 +22,25 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ open }: SidebarProps) {
+  const { data: session } = useSession();
+  const userRole = session?.user?.role;
+  const [rooms, setRooms] = useState<Room[]>([]);
+
+  useEffect(() => {
+    const fetchRooms = async () => {
+      const res = await fetch('/api/rooms');
+      const data: Room[] = await res.json();
+      setRooms(data);
+    };
+    fetchRooms();
+  }, []);
+
   const pathname = usePathname();
   const availableCount = rooms.filter(room => room.status === 'available').length;
   const cleaningCount = rooms.filter(room => room.status === 'cleaning').length;
   const maintenanceCount = rooms.filter(room => room.status === 'maintenance').length;
 
-  const navItems: NavItem[] = [
+  const allNavItems: NavItem[] = [
     { icon: Home, label: 'Dashboard', href: '/dashboard' },
     {
       icon: Bed,
@@ -53,6 +68,13 @@ export default function Sidebar({ open }: SidebarProps) {
     { icon: FileText, label: 'Reports', href: '/dashboard/reports' },
     { icon: Settings, label: 'Settings', href: '/dashboard/settings' },
   ];
+
+  const navItems = allNavItems.filter(item => {
+    if (userRole === 'frontdesk') {
+      return item.label !== 'Reports' && item.label !== 'Staff';
+    }
+    return true; // Show all items for other roles (e.g., admin)
+  });
 
   return (
     <aside

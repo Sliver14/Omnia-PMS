@@ -1,4 +1,4 @@
-export type BookingStatus = 'confirmed' | 'checked-in' | 'checked-out' | 'cancelled';
+export type BookingStatus = 'confirmed' | 'checked_in' | 'checked_out' | 'cancelled';
 
 export interface Guest {
   name: string;

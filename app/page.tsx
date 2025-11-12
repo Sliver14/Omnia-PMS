@@ -16,13 +16,13 @@ export default function LandingPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
-              href="/dashboard"
+              href="/login"
               className="inline-flex items-center gap-2 px-6 py-3 bg-white text-blue-600 rounded-lg font-semibold hover:bg-gray-100 transition"
             >
-              Go to Dashboard <ArrowRight className="w-5 h-5" />
+              Admin/Front Desk <ArrowRight className="w-5 h-5" />
             </Link>
             <Link
-              href="/login"
+              href="/staff/login"
               className="inline-flex items-center gap-2 px-6 py-3 border-2 border-white rounded-lg font-semibold hover:bg-white/10 transition"
             >
               <Shield className="w-5 h-5" /> Staff Login
