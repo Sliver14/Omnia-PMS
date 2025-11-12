@@ -1,0 +1,172 @@
+'use client';
+
+import { useMemo, useState } from 'react';
+import { format } from 'date-fns';
+import { Calendar, User, DollarSign, Filter } from 'lucide-react';
+import { StatusBadge } from '../shared/StatusBadge';
+
+interface Booking {
+  id: string;
+  guestName: string;
+  room: string;
+  roomType: string;
+  checkIn: Date;
+  checkOut: Date;
+  status: 'confirmed' | 'checked-in' | 'checked-out' | 'cancelled';
+  price: number;
+}
+
+const mockBookings: Booking[] = [
+  {
+    id: '1',
+    guestName: 'John Doe',
+    room: '301',
+    roomType: 'Deluxe Suite',
+    checkIn: new Date(2025, 10, 12),
+    checkOut: new Date(2025, 10, 15),
+    status: 'checked-in',
+    price: 250,
+  },
+  {
+    id: '2',
+    guestName: 'Jane Smith',
+    room: '205',
+    roomType: 'Standard',
+    checkIn: new Date(2025, 10, 12),
+    checkOut: new Date(2025, 10, 14),
+    status: 'confirmed',
+    price: 120,
+  },
+  {
+    id: '3',
+    guestName: 'Mike Johnson',
+    room: '402',
+    roomType: 'Premium',
+    checkIn: new Date(2025, 10, 13),
+    checkOut: new Date(2025, 10, 16),
+    status: 'confirmed',
+    price: 180,
+  },
+];
+
+interface BookingListProps {
+  search?: string;
+}
+
+export default function BookingList({ search = '' }: BookingListProps) {
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+
+  const filteredBookings = useMemo(() => {
+    const term = search.toLowerCase();
+    return mockBookings.filter(booking => {
+      const matchesSearch =
+        booking.guestName.toLowerCase().includes(term) ||
+        booking.room.toLowerCase().includes(term) ||
+        booking.roomType.toLowerCase().includes(term);
+
+      const matchesStatus = filterStatus === 'all' || booking.status === filterStatus;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [search, filterStatus]);
+
+  return (
+    <div className="bg-white text-gray-900 rounded-xl shadow-sm border border-gray-200">
+      {/* Filters */}
+      <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+        <div className="flex items-center gap-2">
+          <Filter className="w-5 h-5 text-gray-500" />
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+          >
+            <option value="all">All Status</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="checked-in">Checked In</option>
+            <option value="checked-out">Checked Out</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+        <p className="text-sm text-gray-600">
+          {filteredBookings.length} booking{filteredBookings.length !== 1 ? 's' : ''}
+        </p>
+      </div>
+
+      {/* Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Guest
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Room
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">
+                Dates
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
+                Price/Night
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Status
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {filteredBookings.map((booking) => (
+              <tr key={booking.id} className="hover:bg-gray-50">
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center">
+                    <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center mr-3">
+                      <User className="w-5 h-5 text-gray-600" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">{booking.guestName}</div>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div>
+                    <div className="text-sm font-medium text-gray-900">Room {booking.room}</div>
+                    <div className="text-sm text-gray-500">{booking.roomType}</div>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 hidden sm:table-cell">
+                  <div className="flex items-center gap-1">
+                    <Calendar className="w-4 h-4 text-gray-400" />
+                    {format(booking.checkIn, 'MMM d')} – {format(booking.checkOut, 'MMM d')}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 hidden md:table-cell">
+                  <div className="flex items-center gap-1">
+                    <DollarSign className="w-4 h-4 text-gray-400" />
+                    {booking.price}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <StatusBadge status={booking.status} />
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <button className="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
+                  <button className="text-red-600 hover:text-red-900">Delete</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {filteredBookings.length === 0 && (
+          <div className="text-center py-12 text-gray-500">
+            No bookings found matching your criteria.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
