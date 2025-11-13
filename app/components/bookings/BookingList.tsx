@@ -6,10 +6,15 @@ import { Calendar, User, DollarSign, Filter } from 'lucide-react';
 import { StatusBadge } from '../shared/StatusBadge';
 import type { Booking } from '../../types/booking';
 
+interface ListBookingItem extends Booking {
+  roomDisplay: string;
+  roomTypeDisplay: string;
+}
+
 interface BookingListProps {
   search?: string;
   bookings: Booking[];
-  onSelectBooking: (booking: Booking) => void;
+  onSelectBooking: (booking: ListBookingItem) => void;
 }
 
 export default function BookingList({ search = '', bookings, onSelectBooking }: BookingListProps) {
@@ -17,17 +22,33 @@ export default function BookingList({ search = '', bookings, onSelectBooking }: 
 
   const filteredBookings = useMemo(() => {
     const term = search.toLowerCase();
-    return bookings.filter(booking => {
-      const matchesSearch =
-        booking.guest.name.toLowerCase().includes(term) ||
-        booking.room.toLowerCase().includes(term) ||
-        booking.roomType.toLowerCase().includes(term);
 
-      const matchesStatus = filterStatus === 'all' || booking.status === filterStatus;
+    return bookings
+      .map((booking) => {
+        const rooms = booking.bookedRooms?.map((br) => br.room?.id || 'N/A') || [];
+        const roomTypes = booking.bookedRooms?.map((br) => br.room?.type || 'N/A') || [];
 
-      return matchesSearch && matchesStatus;
-    });
+        return {
+          ...booking,
+          rooms, // e.g. ["101", "102"]
+          roomTypes, // e.g. ["Standard", "Deluxe"]
+          roomDisplay: rooms.join(', '), // "101, 102"
+          roomTypeDisplay: roomTypes.join(', '), // "Standard, Deluxe"
+        };
+      })
+      .filter((booking) => {
+        const matchesSearch =
+          booking.guest.name.toLowerCase().includes(term) ||
+          booking.roomDisplay.toLowerCase().includes(term) ||
+          booking.roomTypeDisplay.toLowerCase().includes(term);
+
+        const matchesStatus =
+          filterStatus === 'all' || booking.status === filterStatus;
+
+        return matchesSearch && matchesStatus;
+      });
   }, [search, filterStatus, bookings]);
+
 
   return (
     <div className="bg-white text-gray-900 rounded-xl shadow-sm border border-gray-200">
@@ -92,8 +113,8 @@ export default function BookingList({ search = '', bookings, onSelectBooking }: 
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div>
-                    <div className="text-sm font-medium text-gray-900">Room {booking.room}</div>
-                    <div className="text-sm text-gray-500">{booking.roomType}</div>
+                    <div className="text-sm font-medium text-gray-900">Room {booking.roomDisplay}</div>
+                    <div className="text-sm text-gray-500">{booking.roomTypeDisplay}</div>
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 hidden sm:table-cell">
@@ -105,7 +126,7 @@ export default function BookingList({ search = '', bookings, onSelectBooking }: 
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 hidden md:table-cell">
                   <div className="flex items-center gap-1">
                     <DollarSign className="w-4 h-4 text-gray-400" />
-                    {booking.price}
+                    {booking.totalPrice}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">

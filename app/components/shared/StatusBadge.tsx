@@ -7,6 +7,7 @@ interface StatusBadgeProps {
     | 'occupied'
     | 'cleaning'
     | 'maintenance'
+    | 'ready' // Added 'ready'
     | 'confirmed'
     | 'checked_in'
     | 'checked_out'
@@ -18,6 +19,7 @@ const statusConfig = {
   occupied: { label: 'Occupied', color: 'bg-blue-100 text-blue-800' },
   cleaning: { label: 'Cleaning', color: 'bg-yellow-100 text-yellow-800' },
   maintenance: { label: 'Maintenance', color: 'bg-red-100 text-red-800' },
+  ready: { label: 'Ready', color: 'bg-indigo-100 text-indigo-800' }, // Added 'ready' config
   confirmed: { label: 'Confirmed', color: 'bg-purple-100 text-purple-800' },
   checked_in: { label: 'Checked In', color: 'bg-blue-100 text-blue-800' },
   checked_out: { label: 'Checked Out', color: 'bg-gray-100 text-gray-800' },

@@ -7,7 +7,7 @@ import { Home, Bed, Calendar, Users, Wrench, FileText, Settings } from 'lucide-r
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '../lib/utils';
-import type { Room } from '../../types/room';
+import type { Room } from '../types/room';
 
 interface NavItem {
   icon: ElementType;
@@ -36,7 +36,7 @@ export default function Sidebar({ open }: SidebarProps) {
   }, []);
 
   const pathname = usePathname();
-  const availableCount = rooms.filter(room => room.status === 'available').length;
+  const readyCount = rooms.filter(room => room.status === 'ready').length;
   const cleaningCount = rooms.filter(room => room.status === 'cleaning').length;
   const maintenanceCount = rooms.filter(room => room.status === 'maintenance').length;
 
@@ -46,7 +46,7 @@ export default function Sidebar({ open }: SidebarProps) {
       icon: Bed,
       label: 'Rooms',
       href: '/dashboard/rooms',
-      badge: `${availableCount} open`,
+      badge: `${readyCount} ready`,
       badgeClassName: 'bg-emerald-100 text-emerald-700',
     },
     { icon: Calendar, label: 'Bookings', href: '/dashboard/bookings' },

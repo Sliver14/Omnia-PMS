@@ -15,10 +15,10 @@ interface RoomFiltersProps {
 
 const statusOptions = [
   { value: 'all', label: 'All Status' },
-  { value: 'available', label: 'Available' },
-  { value: 'occupied', label: 'Occupied' },
+  { value: 'available_today', label: 'Available Rooms' },
   { value: 'cleaning', label: 'Cleaning' },
   { value: 'maintenance', label: 'Maintenance' },
+  { value: 'ready', label: 'Ready' },
 ];
 
 const typeOptions = [

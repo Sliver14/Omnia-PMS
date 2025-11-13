@@ -9,6 +9,11 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Booking } from '../../types/booking';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
+interface CalendarBookingEvent extends Booking {
+  room: string;
+  roomType: string;
+}
+
 const localizer = momentLocalizer(moment);
 
 const roomColors: Record<string, string> = {
@@ -33,16 +38,20 @@ export default function BookingCalendar({ search = '', bookings, onSelectBooking
       bookings
         .filter(b => {
           const term = search.toLowerCase();
-          return (
-            b.guest.name.toLowerCase().includes(term) ||
-            b.room.toLowerCase().includes(term) ||
-            b.roomType.toLowerCase().includes(term)
+          const guestMatch = b.guest.name.toLowerCase().includes(term);
+          const roomMatch = b.bookedRooms?.some(br =>
+            br.room?.id.toLowerCase().includes(term) ||
+            br.room?.type.toLowerCase().includes(term)
           );
+          return guestMatch || roomMatch;
         })
         .map(b => ({
           ...b,
+          // Add room and roomType properties for react-big-calendar
+          room: b.bookedRooms && b.bookedRooms.length > 0 ? b.bookedRooms[0].room?.id : 'N/A',
+          roomType: b.bookedRooms && b.bookedRooms.length > 0 ? b.bookedRooms[0].room?.type : 'N/A',
           end: addDays(b.end, -1),
-        })),
+        })) as CalendarBookingEvent[],
     [bookings, search]
   );
 
@@ -51,22 +60,21 @@ export default function BookingCalendar({ search = '', bookings, onSelectBooking
 
   const handleSelectSlot = useCallback(
     ({ start }: SlotInfo) => {
-      // This would ideally open the modal for a new booking on a specific date.
-      // For now, we'll just log it. The parent component handles modal opening.
       console.log('Selected slot:', start);
     },
     []
   );
 
   const handleSelectEvent = useCallback(
-    (event: Booking) => {
+    (event: CalendarBookingEvent) => {
       onSelectBooking(event);
     },
     [onSelectBooking]
   );
 
-  const eventStyleGetter = useCallback((event: Booking) => {
-    const backgroundColor = roomColors[event.roomType] ?? '#6b7280';
+  const eventStyleGetter = useCallback((event: CalendarBookingEvent) => {
+    // Use the roomType from the representative room for styling
+    const backgroundColor = roomColors[event.roomType || 'N/A'] ?? '#6b7280';
     return {
       style: {
         backgroundColor,
@@ -136,14 +144,20 @@ export default function BookingCalendar({ search = '', bookings, onSelectBooking
           onNavigate={handleNavigate}
           onView={handleViewChange}
           onSelectSlot={handleSelectSlot}
-          onSelectEvent={event => handleSelectEvent(event as Booking)}
+          onSelectEvent={event => handleSelectEvent(event as CalendarBookingEvent)}
           selectable
           eventPropGetter={eventStyleGetter}
           components={{
-            event: ({ event }: { event: Booking }) => (
+            event: ({ event }: { event: CalendarBookingEvent }) => (
               <div className="flex flex-col h-full p-1 text-xs overflow-hidden">
                 <span className="font-medium truncate">{event.guest.name}</span>
-                <span className="truncate">Room {event.room}</span>
+                {event.bookedRooms && event.bookedRooms.length > 0 ? (
+                  <span className="truncate">
+                    {event.bookedRooms.length} Room(s): {event.bookedRooms.map(br => br.room?.id).join(', ')}
+                  </span>
+                ) : (
+                  <span className="truncate">No Rooms</span>
+                )}
               </div>
             ),
           }}

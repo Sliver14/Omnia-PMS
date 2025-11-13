@@ -24,20 +24,20 @@ async function main() {
 
   // Seed Rooms
   const rooms: { id: string; type: string; floor: number; status: RoomStatus; price: number }[] = [
-    { id: '101', type: 'Standard', floor: 1, status: 'available', price: 100.00 },
-    { id: '102', type: 'Deluxe', floor: 1, status: 'occupied', price: 150.00 },
+    { id: '101', type: 'Standard', floor: 1, status: 'ready', price: 100.00 },
+    { id: '102', type: 'Deluxe', floor: 1, status: 'ready', price: 150.00 },
     { id: '103', type: 'Suite', floor: 1, status: 'cleaning', price: 250.00 },
     { id: '104', type: 'Family', floor: 1, status: 'maintenance', price: 200.00 },
-    { id: '105', type: 'Standard', floor: 1, status: 'available', price: 100.00 },
-    { id: '201', type: 'Deluxe', floor: 2, status: 'occupied', price: 150.00 },
+    { id: '105', type: 'Standard', floor: 1, status: 'ready', price: 100.00 },
+    { id: '201', type: 'Deluxe', floor: 2, status: 'ready', price: 150.00 },
     { id: '202', type: 'Suite', floor: 2, status: 'cleaning', price: 250.00 },
     { id: '203', type: 'Family', floor: 2, status: 'maintenance', price: 200.00 },
-    { id: '204', type: 'Standard', floor: 2, status: 'available', price: 100.00 },
-    { id: '205', type: 'Deluxe', floor: 2, status: 'occupied', price: 150.00 },
+    { id: '204', type: 'Standard', floor: 2, status: 'ready', price: 100.00 },
+    { id: '205', type: 'Deluxe', floor: 2, status: 'ready', price: 150.00 },
     { id: '301', type: 'Suite', floor: 3, status: 'cleaning', price: 250.00 },
     { id: '302', type: 'Family', floor: 3, status: 'maintenance', price: 200.00 },
-    { id: '303', type: 'Standard', floor: 3, status: 'available', price: 100.00 },
-    { id: '304', type: 'Deluxe', floor: 3, status: 'occupied', price: 150.00 },
+    { id: '303', type: 'Standard', floor: 3, status: 'ready', price: 100.00 },
+    { id: '304', type: 'Deluxe', floor: 3, status: 'ready', price: 150.00 },
     { id: '305', type: 'Suite', floor: 3, status: 'cleaning', price: 250.00 },
   ];
 
@@ -70,42 +70,72 @@ async function main() {
     },
   });
 
+  const room301 = await prisma.room.findUnique({ where: { id: '301' } });
+  if (!room301) throw new Error('Room 301 not found');
+
   await prisma.booking.create({
     data: {
       title: 'John Doe – 301',
-      start: new Date('2025-11-12T00:00:00.000Z'),
-      end: new Date('2025-11-15T00:00:00.000Z'),
-      room: '301',
-      roomType: 'Deluxe Suite',
+      start: new Date('2025-11-10T12:00:00.000Z'),
+      end: new Date('2025-11-13T12:00:00.000Z'),
       guestId: guest1.id,
-      status: 'checked_in',
-      price: 250,
+      status: 'checked_out', // Changed to checked_out as they are leaving today
+      totalPrice: room301.price * 3, // Assuming 3 nights
+      bookedRooms: {
+        create: [
+          {
+            roomId: room301.id,
+            price: room301.price,
+            quantity: 1,
+          },
+        ],
+      },
     },
   });
+
+  const room205 = await prisma.room.findUnique({ where: { id: '205' } });
+  if (!room205) throw new Error('Room 205 not found');
 
   await prisma.booking.create({
     data: {
       title: 'Jane Smith – 205',
-      start: new Date('2025-11-12T00:00:00.000Z'),
-      end: new Date('2025-11-14T00:00:00.000Z'),
-      room: '205',
-      roomType: 'Standard',
+      start: new Date('2025-11-14T12:00:00.000Z'),
+      end: new Date('2025-11-16T12:00:00.000Z'),
       guestId: guest2.id,
       status: 'confirmed',
-      price: 120,
+      totalPrice: room205.price * 2, // Assuming 2 nights
+      bookedRooms: {
+        create: [
+          {
+            roomId: room205.id,
+            price: room205.price,
+            quantity: 1,
+          },
+        ],
+      },
     },
   });
 
+  const room102 = await prisma.room.findUnique({ where: { id: '102' } });
+  if (!room102) throw new Error('Room 102 not found');
+
   await prisma.booking.create({
     data: {
-      title: 'Mike Johnson – 402',
-      start: new Date('2025-11-13T00:00:00.000Z'),
-      end: new Date('2025-11-16T00:00:00.000Z'),
-      room: '402',
-      roomType: 'Premium',
+      title: 'Mike Johnson – 102',
+      start: new Date('2025-11-13T12:00:00.000Z'),
+      end: new Date('2025-11-15T12:00:00.000Z'),
       guestId: guest3.id,
-      status: 'confirmed',
-      price: 180,
+      status: 'checked_in', // Changed to checked_in
+      totalPrice: room102.price * 2, // Assuming 2 nights
+      bookedRooms: {
+        create: [
+          {
+            roomId: room102.id,
+            price: room102.price,
+            quantity: 1,
+          },
+        ],
+      },
     },
   });
 }

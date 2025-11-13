@@ -103,7 +103,9 @@ export async function POST(request: Request) {
 
     // Calculate number of days
     const startDate = new Date(bookingData.start);
+    startDate.setHours(12, 0, 0, 0); // Set check-in time to 12 PM
     const endDate = new Date(bookingData.end);
+    endDate.setHours(12, 0, 0, 0); // Set check-out time to 12 PM
     const timeDifference = Math.abs(endDate.getTime() - startDate.getTime());
     const numberOfDays = Math.ceil(timeDifference / (1000 * 60 * 60 * 24)); // Convert milliseconds to days
 
@@ -128,6 +130,44 @@ export async function POST(request: Request) {
       0
     );
 
+    // Check for room availability
+    for (const bookedRoom of bookedRooms) {
+      const existingBookings = await prisma.bookedRoom.findMany({
+        where: {
+          roomId: bookedRoom.roomId,
+          booking: {
+            status: {
+              in: ['confirmed', 'checked_in'],
+            },
+            OR: [
+              {
+                start: {
+                  lt: endDate, // existing booking starts before new booking ends
+                },
+                end: {
+                  gt: startDate, // existing booking ends after new booking starts
+                },
+              },
+            ],
+          },
+        },
+        include: {
+          booking: true,
+        },
+      });
+
+      if (existingBookings.length > 0) {
+        const conflictingBooking = existingBookings[0].booking;
+        return NextResponse.json(
+          {
+            message: `Room ${bookedRoom.roomId} is already booked for the selected dates. Conflicting Booking ID: ${conflictingBooking.id}`,
+            conflictingBookingId: conflictingBooking.id,
+          },
+          { status: 409 }
+        );
+      }
+    }
+
     // Create booking
     const newBooking = await prisma.booking.create({
       data: {
@@ -148,20 +188,7 @@ export async function POST(request: Request) {
       include: { guest: true, bookedRooms: true },
     });
 
-    // ✅ Update room status based on booking status
-    const roomStatus =
-      status === 'confirmed' || status === 'checked_in'
-        ? 'occupied'
-        : status === 'cancelled' || status === 'checked_out'
-        ? 'available'
-        : undefined;
 
-    if (roomStatus) {
-      await prisma.room.updateMany({
-        where: { id: { in: bookedRooms.map((r: any) => r.roomId) } },
-        data: { status: roomStatus },
-      });
-    }
 
     return NextResponse.json(newBooking, { status: 201 });
   } catch (error) {

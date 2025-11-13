@@ -1,6 +1,12 @@
 import { NextResponse, NextRequest } from 'next/server';
 import prisma from '../../../lib/prisma';
 
+interface Context {
+  params: {
+    id: string;
+  };
+}
+
 // PUT (update) a room
 export async function PUT(request: NextRequest, context: any) {
   try {
