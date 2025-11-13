@@ -49,6 +49,10 @@ export default function BookingsPage() {
   }, [notification]);
 
   const handleOpenModal = (booking: Booking | null = null) => {
+    if (booking && (booking.status === 'checked_in' || booking.status === 'checked_out')) {
+      setNotification({ message: `Cannot edit bookings with status '${booking.status}'. Only 'confirmed' bookings can be edited.`, type: 'error' });
+      return;
+    }
     setSelectedBooking(booking);
     setIsModalOpen(true);
   };
@@ -137,15 +141,15 @@ export default function BookingsPage() {
           <h1 className="text-3xl font-bold text-gray-900">Bookings</h1>
           <p className="text-gray-600 mt-1">Manage reservations and guest stays</p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative">
+        <div className="flex flex-wrap items-center gap-2"> {/* Added flex-wrap */}
+          <div className="relative flex-grow"> {/* Added flex-grow */}
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               placeholder="Search bookings..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm w-64"
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm w-full"
             />
           </div>
           <div className="flex bg-gray-100 rounded-lg p-1">
@@ -164,7 +168,7 @@ export default function BookingsPage() {
           </div>
           <button
             onClick={() => handleOpenModal()}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex-shrink-0"
           >
             <Plus className="w-4 h-4" />
             New Booking

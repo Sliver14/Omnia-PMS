@@ -3,8 +3,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Play, CheckCircle, RotateCcw } from 'lucide-react';
 
-// Define Room interface directly here as a workaround for build issues
-export type RoomStatus = 'available' | 'occupied' | 'cleaning' | 'maintenance';
+import { RoomStatus } from '@prisma/client';
 
 export interface Room {
   id: string;
@@ -13,7 +12,7 @@ export interface Room {
   status: RoomStatus;
 }
 
-type TaskStatus = 'pending' | 'in-progress' | 'completed';
+type TaskStatus = 'pending' | 'in-progress'; // Removed 'completed'
 
 interface Task {
   id: string;
@@ -29,7 +28,7 @@ const staffPool = ['Maria', 'Carlos', 'Aisha', 'Leo', 'Priya', 'Sam'];
 const columns: { key: TaskStatus; label:string; emptyState: string }[] = [
   { key: 'pending', label: 'To Do', emptyState: 'No pending tasks' },
   { key: 'in-progress', label: 'In Progress', emptyState: 'Nothing in progress' },
-  { key: 'completed', label: 'Completed', emptyState: 'No tasks completed yet' },
+  // Removed 'completed' column
 ];
 
 function statusAccent(status: TaskStatus) {
@@ -101,7 +100,7 @@ export default function TaskBoard() {
   const handleComplete = (taskId: string) => {
     const task = tasks.find(t => t.id === taskId);
     if (task) {
-      updateRoomStatus(task.room, 'available');
+      updateRoomStatus(task.room, 'ready'); // Changed to 'ready'
     }
   };
 
@@ -115,7 +114,7 @@ export default function TaskBoard() {
   );
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 overflow-x-auto"> {/* Added overflow-x-auto */}
       {grouped.map(column => (
         <section key={column.key} className="bg-gray-50 text-gray-900 rounded-xl p-4 border border-gray-200">
           <header className="flex items-center justify-between mb-4">

@@ -6,7 +6,7 @@ import { StatusBadge } from '../../components/shared/StatusBadge';
 import type { RoomFilterState } from './RoomFilters';
 import type { Room } from '../../types/room';
 
-export default function RoomGrid({ filters }: { filters: RoomFilterState }) {
+export default function RoomGrid({ filters, searchTerm }: { filters: RoomFilterState; searchTerm: string }) {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -26,6 +26,9 @@ export default function RoomGrid({ filters }: { filters: RoomFilterState }) {
         if (filters.floor !== 'all') {
           queryParams.append('floor', filters.floor);
         }
+        if (searchTerm) { // Add search term to query params
+          queryParams.append('search', searchTerm);
+        }
 
         const res = await fetch(`/api/rooms?${queryParams.toString()}`);
         if (!res.ok) {
@@ -40,14 +43,14 @@ export default function RoomGrid({ filters }: { filters: RoomFilterState }) {
       }
     };
     fetchRooms();
-  }, [filters]); // Re-run effect when filters change
+  }, [filters, searchTerm]); // Re-run effect when filters or search term change
 
   if (loading) return <div className="text-center text-gray-600">Loading rooms...</div>;
   if (error) return <div className="text-center text-red-600">Error: {error}</div>;
   if (rooms.length === 0) return <div className="text-center text-gray-600">No rooms found matching your criteria.</div>;
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 overflow-x-auto"> {/* Added overflow-x-auto */}
       {rooms.map(room => (
         <div
           key={room.id}

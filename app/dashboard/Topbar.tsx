@@ -1,8 +1,8 @@
 'use client';
 
 import { useSession, signOut } from 'next-auth/react';
-import { Bell, Menu, Search, User, LogOut, ChevronDown } from 'lucide-react';
-import { useState } from 'react';
+import { Bell, Menu, Search, User, LogOut, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react'; // Added useRef, useEffect
 import Link from 'next/link';
 
 interface TopbarProps {
@@ -17,6 +17,39 @@ export default function Topbar({ sidebarOpen, setSidebarOpen }: TopbarProps) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
+  const profileRef = useRef<HTMLDivElement>(null);
+  const notificationsRef = useRef<HTMLDivElement>(null);
+
+  // Effect for closing profile dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setProfileOpen(false);
+      }
+    };
+    if (profileOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [profileOpen]);
+
+  // Effect for closing notifications dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
+        setNotificationsOpen(false);
+      }
+    };
+    if (notificationsOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [notificationsOpen]);
+
   const handleLogout = () => {
     const isAdminRole = userRole === 'admin' || userRole === 'frontdesk';
     const callbackUrl = isAdminRole ? '/login' : '/staff/login';
@@ -28,12 +61,20 @@ export default function Topbar({ sidebarOpen, setSidebarOpen }: TopbarProps) {
       <div className="flex items-center justify-between px-4 py-3">
         {/* Left side */}
         <div className="flex items-center space-x-4">
-          {/* Mobile menu button */}
+          {/* Mobile menu button (hidden on large screens) */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="p-2 rounded-lg hover:bg-gray-100 lg:hidden"
           >
             <Menu className="w-6 h-6" />
+          </button>
+
+          {/* Desktop sidebar toggle button (hidden on small screens) */}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 rounded-lg hover:bg-gray-100 hidden lg:block" // Visible only on large screens
+          >
+            {sidebarOpen ? <ChevronLeft className="w-6 h-6" /> : <ChevronRight className="w-6 h-6" />}
           </button>
 
           {/* Logo */}
@@ -49,18 +90,9 @@ export default function Topbar({ sidebarOpen, setSidebarOpen }: TopbarProps) {
 
         {/* Right side */}
         <div className="flex items-center space-x-4">
-          {/* Search (desktop only) */}
-          <div className="hidden md:flex items-center bg-gray-100 rounded-lg px-3 py-2">
-            <Search className="w-5 h-5 text-gray-500 mr-2" />
-            <input
-              type="text"
-              placeholder="Search..."
-              className="bg-transparent outline-none text-sm w-64"
-            />
-          </div>
-
+         
           {/* Notifications */}
-          <div className="relative">
+          <div className="relative" ref={notificationsRef}>
             <button
               onClick={() => setNotificationsOpen(!notificationsOpen)}
               className="relative p-2 rounded-lg hover:bg-gray-100"
@@ -89,7 +121,7 @@ export default function Topbar({ sidebarOpen, setSidebarOpen }: TopbarProps) {
           </div>
 
           {/* Profile */}
-          <div className="relative">
+          <div className="relative" ref={profileRef}>
             <button
               onClick={() => setProfileOpen(!profileOpen)}
               className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100"
@@ -108,7 +140,7 @@ export default function Topbar({ sidebarOpen, setSidebarOpen }: TopbarProps) {
               <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200">
                 <div className="p-2">
                   <Link
-                    href="/profile"
+                    href="/dashboard/profile"
                     className="w-full flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-gray-100"
                   >
                     <User className="w-4 h-4" />
@@ -124,8 +156,7 @@ export default function Topbar({ sidebarOpen, setSidebarOpen }: TopbarProps) {
                 </div>
               </div>
             )}
-          </div>
-        </div>
+          </div>        </div>
       </div>
     </header>
   );

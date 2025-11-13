@@ -79,6 +79,15 @@ export async function GET(request: NextRequest) {
       where.status = statusFilter;
     }
 
+    const searchTerm = searchParams.get('search');
+    if (searchTerm) {
+      where.OR = [
+        { id: { contains: searchTerm } },
+        { type: { contains: searchTerm } },
+        // Add other searchable fields if necessary, e.g., notes
+      ];
+    }
+
     const rooms = await prisma.room.findMany({
       where,
     });

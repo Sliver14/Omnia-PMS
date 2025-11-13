@@ -3,7 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { useState, useEffect } from 'react';
 import type { ElementType } from 'react';
-import { Home, Bed, Calendar, Users, Wrench, FileText, Settings } from 'lucide-react';
+import { Home, Bed, Calendar, Users, Wrench, FileText, Settings, ChevronLeft, ChevronRight } from 'lucide-react'; // Added ChevronLeft, ChevronRight
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '../lib/utils';
@@ -19,24 +19,31 @@ interface NavItem {
 
 interface SidebarProps {
   open: boolean;
+  setSidebarOpen: (open: boolean) => void; // Added setSidebarOpen
 }
 
-export default function Sidebar({ open }: SidebarProps) {
+export default function Sidebar({ open, setSidebarOpen }: SidebarProps) { // Destructure setSidebarOpen
   const { data: session } = useSession();
   const userRole = session?.user?.role;
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [availableTodayCount, setAvailableTodayCount] = useState(0);
 
   useEffect(() => {
-    const fetchRooms = async () => {
-      const res = await fetch('/api/rooms');
-      const data: Room[] = await res.json();
-      setRooms(data);
+    const fetchCounts = async () => {
+      // Fetch all rooms for static counts (cleaning, maintenance, ready)
+      const allRoomsRes = await fetch('/api/rooms');
+      const allRoomsData: Room[] = await allRoomsRes.json();
+      setRooms(allRoomsData);
+
+      // Fetch available today rooms for dynamic count
+      const availableTodayRes = await fetch('/api/rooms?status=available_today');
+      const availableTodayData: Room[] = await availableTodayRes.json();
+      setAvailableTodayCount(availableTodayData.length);
     };
-    fetchRooms();
-  }, []);
+    fetchCounts();
+  }, []); // Fetch on mount
 
   const pathname = usePathname();
-  const readyCount = rooms.filter(room => room.status === 'ready').length;
   const cleaningCount = rooms.filter(room => room.status === 'cleaning').length;
   const maintenanceCount = rooms.filter(room => room.status === 'maintenance').length;
 
@@ -46,7 +53,7 @@ export default function Sidebar({ open }: SidebarProps) {
       icon: Bed,
       label: 'Rooms',
       href: '/dashboard/rooms',
-      badge: `${readyCount} ready`,
+      badge: `${availableTodayCount} open`, // Display availableTodayCount
       badgeClassName: 'bg-emerald-100 text-emerald-700',
     },
     { icon: Calendar, label: 'Bookings', href: '/dashboard/bookings' },
@@ -66,6 +73,7 @@ export default function Sidebar({ open }: SidebarProps) {
     },
     { icon: Users, label: 'Staff', href: '/dashboard/staff' },
     { icon: FileText, label: 'Reports', href: '/dashboard/reports' },
+    { icon: Users, label: 'Profile', href: '/dashboard/profile' }, // Added Profile link
     { icon: Settings, label: 'Settings', href: '/dashboard/settings' },
   ];
 
@@ -85,7 +93,7 @@ export default function Sidebar({ open }: SidebarProps) {
     >
       <nav className="p-4 space-y-2">
         {navItems.map((item) => {
-          const isActive = pathname.startsWith(item.href);
+          const isActive = item.href === '/dashboard' ? pathname === item.href : pathname.startsWith(item.href);
           return (
             <Link
               key={item.href}
@@ -94,11 +102,12 @@ export default function Sidebar({ open }: SidebarProps) {
                 'flex items-center space-x-3 px-3 py-3 rounded-lg transition-colors',
                 isActive
                   ? 'bg-blue-50 text-blue-600'
-                  : 'text-gray-700 hover:bg-gray-100'
+                  : 'text-gray-700 hover:bg-gray-100',
+                !open && 'justify-center' // Center items when collapsed
               )}
             >
               <item.icon className="w-5 h-5 flex-shrink-0" />
-              <span className={cn('font-medium', open ? 'block' : 'hidden lg:block')}>
+              <span className={cn('font-medium', !open && 'lg:hidden')}> {/* Hide label on desktop when collapsed */}
                 {item.label}
               </span>
               {item.badge && open && (

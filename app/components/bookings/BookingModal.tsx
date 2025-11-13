@@ -24,7 +24,7 @@ const createInitialForm = (seedDate?: Date | null): Partial<Booking> => {
     start: baseDate,
     end: addDays(baseDate, 1),
     guest: { name: "", email: "", phone: "" },
-    status: "confirmed",
+    status: "checked_in", // Changed to checked_in
     isPaymentConfirmed: false,
     paymentStatus: "pending",
     paymentMethod: "bank_transfer",
@@ -438,8 +438,9 @@ export default function BookingModal({
                 }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
               >
-                <option value="confirmed">Confirmed</option>
                 <option value="checked_in">Checked In</option>
+                <option value="confirmed">Confirmed</option>
+                
               </select>
             </div>
           </div>
