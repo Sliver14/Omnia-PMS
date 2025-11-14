@@ -2,8 +2,8 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { Play, CheckCircle, RotateCcw } from 'lucide-react';
-
 import { RoomStatus } from '@prisma/client';
+import { useHotel } from '@/app/context/HotelContext';
 
 export interface Room {
   id: string;
@@ -12,7 +12,7 @@ export interface Room {
   status: RoomStatus;
 }
 
-type TaskStatus = 'pending' | 'in-progress'; // Removed 'completed'
+type TaskStatus = 'pending' | 'in-progress';
 
 interface Task {
   id: string;
@@ -28,7 +28,6 @@ const staffPool = ['Maria', 'Carlos', 'Aisha', 'Leo', 'Priya', 'Sam'];
 const columns: { key: TaskStatus; label:string; emptyState: string }[] = [
   { key: 'pending', label: 'To Do', emptyState: 'No pending tasks' },
   { key: 'in-progress', label: 'In Progress', emptyState: 'Nothing in progress' },
-  // Removed 'completed' column
 ];
 
 function statusAccent(status: TaskStatus) {
@@ -49,13 +48,23 @@ function priorityBadge(priority: Task['priority']) {
 }
 
 export default function TaskBoard() {
+  const { hotelId } = useHotel();
   const [tasks, setTasks] = useState<Task[]>([]);
 
   const fetchRoomsAndGenerateTasks = async () => {
-    const res = await fetch('/api/rooms');
-    const roomsData: Room[] = await res.json();
+    if (!hotelId) {
+      console.warn('No hotelId available, skipping fetch for rooms.');
+      return;
+    }
+    const res = await fetch('/api/rooms', {
+      headers: {
+        'X-Hotel-ID': hotelId,
+      },
+    });
+    const roomsData = await res.json();
+    const rooms = Array.isArray(roomsData) ? roomsData : [];
 
-    const generatedTasks: Task[] = roomsData
+    const generatedTasks: Task[] = rooms
       .filter(room => room.status === 'cleaning' || room.status === 'maintenance')
       .map((room, index) => {
         const priority: Task['priority'] = room.status === 'maintenance' ? 'high' : 'medium';
@@ -79,12 +88,19 @@ export default function TaskBoard() {
 
   useEffect(() => {
     fetchRoomsAndGenerateTasks();
-  }, []);
+  }, [hotelId]);
 
   const updateRoomStatus = async (roomId: string, status: Room['status']) => {
+    if (!hotelId) {
+      console.warn('No hotelId available, skipping update for room status.');
+      return;
+    }
     await fetch(`/api/rooms/${roomId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Hotel-ID': hotelId,
+      },
       body: JSON.stringify({ status }),
     });
     await fetchRoomsAndGenerateTasks();
@@ -100,7 +116,7 @@ export default function TaskBoard() {
   const handleComplete = (taskId: string) => {
     const task = tasks.find(t => t.id === taskId);
     if (task) {
-      updateRoomStatus(task.room, 'ready'); // Changed to 'ready'
+      updateRoomStatus(task.room, 'ready');
     }
   };
 
@@ -114,7 +130,7 @@ export default function TaskBoard() {
   );
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 overflow-x-auto"> {/* Added overflow-x-auto */}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 overflow-x-auto">
       {grouped.map(column => (
         <section key={column.key} className="bg-gray-50 text-gray-900 rounded-xl p-4 border border-gray-200">
           <header className="flex items-center justify-between mb-4">
@@ -167,7 +183,6 @@ export default function TaskBoard() {
                       Complete
                     </button>
                   )}
-                  {/* The 'Reopen' button is not implemented as it would require more complex state management */}
                 </footer>
               </article>
             ))}

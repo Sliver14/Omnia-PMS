@@ -11,7 +11,8 @@ CREATE TABLE "Room" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "type" TEXT NOT NULL,
     "floor" INTEGER NOT NULL,
-    "status" TEXT NOT NULL
+    "status" TEXT NOT NULL,
+    "price" REAL NOT NULL DEFAULT 0
 );
 
 -- CreateTable
@@ -20,13 +21,25 @@ CREATE TABLE "Booking" (
     "title" TEXT NOT NULL,
     "start" DATETIME NOT NULL,
     "end" DATETIME NOT NULL,
-    "room" TEXT NOT NULL,
-    "roomType" TEXT NOT NULL,
     "guestId" TEXT NOT NULL,
     "status" TEXT NOT NULL,
-    "price" REAL NOT NULL,
+    "paymentStatus" TEXT NOT NULL DEFAULT 'pending',
+    "paymentMethod" TEXT NOT NULL DEFAULT 'bank_transfer',
+    "isPaymentConfirmed" BOOLEAN NOT NULL DEFAULT false,
+    "totalPrice" REAL NOT NULL DEFAULT 0,
     "notes" TEXT,
     CONSTRAINT "Booking_guestId_fkey" FOREIGN KEY ("guestId") REFERENCES "Guest" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "BookedRoom" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "bookingId" TEXT NOT NULL,
+    "roomId" TEXT NOT NULL,
+    "quantity" INTEGER NOT NULL DEFAULT 1,
+    "price" REAL NOT NULL,
+    CONSTRAINT "BookedRoom_bookingId_fkey" FOREIGN KEY ("bookingId") REFERENCES "Booking" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT "BookedRoom_roomId_fkey" FOREIGN KEY ("roomId") REFERENCES "Room" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 -- CreateTable

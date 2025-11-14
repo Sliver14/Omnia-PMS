@@ -9,10 +9,10 @@ export default function LandingPage() {
       <section className="bg-gradient-to-br from-blue-600 to-purple-700 text-white">
         <div className="max-w-7xl mx-auto px-4 py-20 text-center">
           <h1 className="text-5xl md:text-6xl font-bold mb-6">
-            HotelAdmin Pro
+            Omnia Hotels
           </h1>
           <p className="text-xl md:text-2xl mb-8 max-w-3xl mx-auto">
-            The complete hotel management suite – from bookings to housekeeping.
+            Omnia Centralized Hotel Booking & Management System
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
@@ -57,7 +57,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-8">
         <div className="max-w-7xl mx-auto px-4 text-center">
-          <p>&copy; 2025 HotelAdmin Pro. All rights reserved.</p>
+          <p>&copy; 2025 Omnia Hotels. All rights reserved.</p>
         </div>
       </footer>
     </div>

@@ -184,14 +184,18 @@ interface Context {
   };
 }
 
-// ---------------------------
 export async function PUT(request: NextRequest, context: any) {
+  const hotelId = request.headers.get('X-Hotel-ID');
+  if (!hotelId) {
+    return NextResponse.json({ message: 'X-Hotel-ID header is required' }, { status: 400 });
+  }
+
   try {
     const { guest, bookedRooms, status, ...bookingData } = await request.json();
     const { id } = context.params;
 
-    const existingBooking = await prisma.booking.findUnique({
-      where: { id },
+    const existingBooking = await prisma.booking.findFirst({
+      where: { id, hotelId },
       include: { bookedRooms: true },
     });
 
@@ -199,25 +203,21 @@ export async function PUT(request: NextRequest, context: any) {
       return NextResponse.json({ message: 'Booking not found' }, { status: 404 });
     }
 
-    // Handle guest update/creation
     let guestConnectOrCreate: any = {};
     if (guest?.email) {
       const existingGuest = await prisma.guest.findUnique({ where: { email: guest.email } });
       guestConnectOrCreate = existingGuest
         ? { connect: { id: existingGuest.id } }
-        : { create: { name: guest.name, email: guest.email, phone: guest.phone } };
+        : { create: { name: guest.name, email: guest.email, phone: guest.phone, hotelId } };
     }
 
-    // Delete existing bookedRooms
     await prisma.bookedRoom.deleteMany({ where: { bookingId: id } });
 
-    // Calculate total price
     const totalPrice = bookedRooms.reduce(
       (sum: number, room: { price: number; quantity: number }) => sum + room.price * room.quantity,
       0
     );
 
-    // Update booking
     const updatedBooking = await prisma.booking.update({
       where: { id },
       data: {
@@ -238,8 +238,6 @@ export async function PUT(request: NextRequest, context: any) {
       include: { guest: true, bookedRooms: true },
     });
 
-
-
     return NextResponse.json(updatedBooking);
   } catch (error) {
     console.error('Error updating booking:', error);
@@ -248,11 +246,16 @@ export async function PUT(request: NextRequest, context: any) {
 }
 
 export async function DELETE(request: NextRequest, context: any) {
+  const hotelId = request.headers.get('X-Hotel-ID');
+  if (!hotelId) {
+    return NextResponse.json({ message: 'X-Hotel-ID header is required' }, { status: 400 });
+  }
+
   try {
     const { id } = context.params;
 
-    const bookingToDelete = await prisma.booking.findUnique({
-      where: { id },
+    const bookingToDelete = await prisma.booking.findFirst({
+      where: { id, hotelId },
       include: { bookedRooms: true },
     });
 
@@ -260,13 +263,8 @@ export async function DELETE(request: NextRequest, context: any) {
       return NextResponse.json({ message: 'Booking not found' }, { status: 404 });
     }
 
-    const roomIds = bookingToDelete.bookedRooms.map(br => br.roomId);
-
-    // Delete bookedRooms then booking
     await prisma.bookedRoom.deleteMany({ where: { bookingId: id } });
     await prisma.booking.delete({ where: { id } });
-
-
 
     return NextResponse.json({ message: 'Booking deleted successfully' }, { status: 200 });
   } catch (error) {

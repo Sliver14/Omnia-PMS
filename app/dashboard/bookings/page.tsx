@@ -1,42 +1,37 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Calendar, List, Search, Plus } from 'lucide-react';
 import BookingCalendar from '@/app/components/bookings/BookingCalendar';
 import BookingList from '@/app/components/bookings/BookingList';
 import BookingModal from '@/app/components/bookings/BookingModal';
 import type { Booking } from '../../types/booking';
+import { useApi } from '@/app/lib/hooks';
+import { useHotel } from '@/app/context/HotelContext';
 
 export default function BookingsPage() {
+  const { hotelId } = useHotel();
   const [view, setView] = useState<'calendar' | 'list'>('list');
   const [search, setSearch] = useState('');
-  const [bookings, setBookings] = useState<Booking[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  const fetchBookings = useCallback(async () => {
-    const res = await fetch('/api/bookings');
-    const data = await res.json(); // Remove type assertion for debugging
+  const { data: bookingsData, isLoading, error, refetch } = useApi<Booking[]>('/api/bookings');
 
-    if (!Array.isArray(data)) {
-      console.error('API response is not an array:', data);
-      // Handle the error appropriately, e.g., set an error state or return early
-      setBookings([]); // Set to empty array to prevent further errors
-      return;
-    }
+  console.log('BookingsPage: bookingsData', bookingsData);
+  console.log('BookingsPage: isLoading', isLoading);
+  console.log('BookingsPage: error', error);
 
-    const formattedData = data.map(booking => ({
+  const bookings = useMemo(() => {
+    console.log('BookingsPage: Recalculating bookings memo');
+    if (!bookingsData) return [];
+    return bookingsData.map(booking => ({
       ...booking,
       start: new Date(booking.start),
       end: new Date(booking.end),
     }));
-    setBookings(formattedData);
-  }, []);
-
-  useEffect(() => {
-    fetchBookings();
-  }, [fetchBookings]);
+  }, [bookingsData]);
 
   // Effect to clear notification after a few seconds
   useEffect(() => {
@@ -63,6 +58,12 @@ export default function BookingsPage() {
   };
 
   const handleSave = async (saved: Booking) => {
+    if (!hotelId) {
+      console.warn('BookingsPage: No hotelId available, skipping save operation.');
+      setNotification({ message: 'Error: No hotel selected.', type: 'error' });
+      return;
+    }
+
     const isUpdate = bookings.some(b => b.id === saved.id);
     const url = isUpdate ? `/api/bookings/${saved.id}` : '/api/bookings';
     const method = isUpdate ? 'PUT' : 'POST';
@@ -70,7 +71,7 @@ export default function BookingsPage() {
     try {
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Hotel-ID': hotelId },
         body: JSON.stringify(saved),
       });
 
@@ -85,27 +86,40 @@ export default function BookingsPage() {
       setNotification({ message: error.message || `Error ${isUpdate ? 'updating' : 'creating'} booking.`, type: 'error' });
     }
 
-    await fetchBookings();
+    await refetch();
     handleCloseModal();
   };
 
   const handleDelete = async (id: string) => {
+    if (!hotelId) {
+      console.warn('BookingsPage: No hotelId available, skipping delete operation.');
+      setNotification({ message: 'Error: No hotel selected.', type: 'error' });
+      return;
+    }
     try {
-      await fetch(`/api/bookings/${id}`, { method: 'DELETE' });
+      await fetch(`/api/bookings/${id}`, {
+        method: 'DELETE',
+        headers: { 'X-Hotel-ID': hotelId },
+      });
       setNotification({ message: 'Booking deleted successfully!', type: 'success' });
     } catch (error) {
       console.error('Error deleting booking:', error);
       setNotification({ message: 'Error deleting booking.', type: 'error' });
     }
-    await fetchBookings();
+    await refetch();
     handleCloseModal();
   };
 
   const handleUpdateStatus = async (bookingId: string, roomId: string | null, status: Booking['status']) => {
+    if (!hotelId) {
+      console.warn('BookingsPage: No hotelId available, skipping status update operation.');
+      setNotification({ message: 'Error: No hotel selected.', type: 'error' });
+      return;
+    }
     try {
       await fetch(`/api/bookings/${bookingId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Hotel-ID': hotelId },
         body: JSON.stringify({ status }),
       });
 
@@ -113,7 +127,7 @@ export default function BookingsPage() {
       if (status === 'checked_out' && roomId) {
         await fetch(`/api/rooms/${roomId}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'X-Hotel-ID': hotelId },
           body: JSON.stringify({ status: 'cleaning' }),
         });
       }
@@ -122,7 +136,7 @@ export default function BookingsPage() {
       console.error('Error updating booking status:', error);
       setNotification({ message: 'Error updating booking status.', type: 'error' });
     }
-    await fetchBookings();
+    await refetch();
   };
 
   return (
@@ -141,8 +155,8 @@ export default function BookingsPage() {
           <h1 className="text-3xl font-bold text-gray-900">Bookings</h1>
           <p className="text-gray-600 mt-1">Manage reservations and guest stays</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2"> {/* Added flex-wrap */}
-          <div className="relative flex-grow"> {/* Added flex-grow */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-grow">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
@@ -176,9 +190,27 @@ export default function BookingsPage() {
         </div>
       </div>
 
-      {view === 'calendar' ? (
+      {isLoading && (
+        <div className="space-y-4">
+          <div className="h-8 bg-gray-200 rounded w-3/4 animate-pulse"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/2 animate-pulse"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="bg-white p-4 rounded-lg shadow animate-pulse">
+                <div className="h-6 bg-gray-200 rounded w-full mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded w-5/6 mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {error && <p className="text-red-500">Error loading bookings: {error.message}</p>}
+
+      {!isLoading && !error && view === 'calendar' && (
         <BookingCalendar search={search} bookings={bookings} onSelectBooking={handleOpenModal} />
-      ) : (
+      )}
+      {!isLoading && !error && view === 'list' && (
         <BookingList search={search} bookings={bookings} onSelectBooking={handleOpenModal} />
       )}
 

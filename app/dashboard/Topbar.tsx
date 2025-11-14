@@ -1,9 +1,10 @@
 'use client';
 
 import { useSession, signOut } from 'next-auth/react';
-import { Bell, Menu, Search, User, LogOut, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react'; // Added useRef, useEffect
+import { Bell, Menu, User, LogOut, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { useHotel } from '../context/HotelContext';
 
 interface TopbarProps {
   sidebarOpen: boolean;
@@ -13,42 +14,67 @@ interface TopbarProps {
 export default function Topbar({ sidebarOpen, setSidebarOpen }: TopbarProps) {
   const { data: session } = useSession();
   const userRole = session?.user?.role;
+  const { hotelId, setHotelId } = useHotel();
 
+  // --- Existing states ---
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
   const profileRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
 
-  // Effect for closing profile dropdown on outside click
+  // --- NEW: Hotel Switcher states ---
+  const [hotelOpen, setHotelOpen] = useState(false);
+  
+  // TODO: Fetch hotels from the API
+  const hotels = [
+    { id: "clx1s2q5t000008l3g6f6e2z1", name: "Omnia Towers" },
+    { id: "clx1s2q5t000108l3h2g2a2b2", name: "Omnia Hotels & Suites" },
+    { id: "clx1s2q5t000208l3f6g6e2z3", name: "Omnia Court" },
+    { id: "clx1s2q5t000308l3h2g2a2b4", name: "Omnia Castle" },
+  ];
+  const hotelRef = useRef<HTMLDivElement>(null);
+
+  const selectedHotel = hotels.find(h => h.id === hotelId) || hotels[0];
+
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+    if (!hotelId) {
+      setHotelId(hotels[0].id);
+    }
+  }, [hotelId, setHotelId, hotels]);
+
+  // Close profile dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
         setProfileOpen(false);
       }
     };
-    if (profileOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    if (profileOpen) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, [profileOpen]);
 
-  // Effect for closing notifications dropdown on outside click
+  // Close notifications dropdown on outside click
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
+    const handler = (e: MouseEvent) => {
+      if (notificationsRef.current && !notificationsRef.current.contains(e.target as Node)) {
         setNotificationsOpen(false);
       }
     };
-    if (notificationsOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    if (notificationsOpen) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, [notificationsOpen]);
+
+  // NEW: Close hotel dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (hotelRef.current && !hotelRef.current.contains(e.target as Node)) {
+        setHotelOpen(false);
+      }
+    };
+    if (hotelOpen) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [hotelOpen]);
 
   const handleLogout = () => {
     const isAdminRole = userRole === 'admin' || userRole === 'frontdesk';
@@ -59,9 +85,11 @@ export default function Topbar({ sidebarOpen, setSidebarOpen }: TopbarProps) {
   return (
     <header className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-40">
       <div className="flex items-center justify-between px-4 py-3">
-        {/* Left side */}
+        
+        {/* Left section */}
         <div className="flex items-center space-x-4">
-          {/* Mobile menu button (hidden on large screens) */}
+
+          {/* Mobile toggle */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="p-2 rounded-lg hover:bg-gray-100 lg:hidden"
@@ -69,28 +97,58 @@ export default function Topbar({ sidebarOpen, setSidebarOpen }: TopbarProps) {
             <Menu className="w-6 h-6" />
           </button>
 
-          {/* Desktop sidebar toggle button (hidden on small screens) */}
+          {/* Desktop toggle */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 rounded-lg hover:bg-gray-100 hidden lg:block" // Visible only on large screens
+            className="p-2 rounded-lg hover:bg-gray-100 hidden lg:block"
           >
             {sidebarOpen ? <ChevronLeft className="w-6 h-6" /> : <ChevronRight className="w-6 h-6" />}
           </button>
 
-          {/* Logo */}
-          <Link href="/dashboard" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold">H</span>
-            </div>
-            <span className="font-semibold text-gray-900 hidden sm:block">
-              HotelAdmin Pro
-            </span>
-          </Link>
+          {/* Logo + Hotel Switcher */}
+          <div className="relative flex items-center space-x-2" ref={hotelRef}>
+            
+            {/* Logo */}
+            <Link href="/dashboard" className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold">O</span>
+              </div>
+              <span className="font-semibold text-gray-900 hidden sm:block">Omnia Hotels</span>
+            </Link>
+
+            {/* Hotel Switcher button */}
+            <button
+              onClick={() => setHotelOpen(!hotelOpen)}
+              className="flex items-center space-x-1 px-2 py-1 rounded hover:bg-gray-100 border border-gray-300 ml-2"
+            >
+              <span className="text-sm">{selectedHotel.name}</span>
+              <ChevronDown className="w-4 h-4" />
+            </button>
+
+            {/* Hotel dropdown */}
+            {hotelOpen && (
+              <div className="absolute top-12 left-32 bg-white border border-gray-200 rounded-lg shadow-lg w-48 z-50">
+                {hotels.map((hotel) => (
+                  <button
+                    key={hotel.id}
+                    onClick={() => {
+                      setHotelId(hotel.id);
+                      setHotelOpen(false);
+                    }}
+                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
+                  >
+                    {hotel.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+          </div>
         </div>
 
-        {/* Right side */}
+        {/* Right Section */}
         <div className="flex items-center space-x-4">
-         
+
           {/* Notifications */}
           <div className="relative" ref={notificationsRef}>
             <button
@@ -109,11 +167,7 @@ export default function Topbar({ sidebarOpen, setSidebarOpen }: TopbarProps) {
                 <div className="max-h-96 overflow-y-auto">
                   <div className="p-4 hover:bg-gray-50 border-b border-gray-100">
                     <p className="font-medium text-sm">New booking received</p>
-                    <p className="text-xs text-gray-600">Room 301 – John Doe</p>
-                  </div>
-                  <div className="p-4 hover:bg-gray-50">
-                    <p className="font-medium text-sm">Room 205 needs maintenance</p>
-                    <p className="text-xs text-gray-600">Reported by housekeeping</p>
+                    <p className="text-xs text-gray-600">Room 301 — John Doe</p>
                   </div>
                 </div>
               </div>
@@ -156,7 +210,9 @@ export default function Topbar({ sidebarOpen, setSidebarOpen }: TopbarProps) {
                 </div>
               </div>
             )}
-          </div>        </div>
+          </div>
+
+        </div>
       </div>
     </header>
   );

@@ -3,6 +3,14 @@
     "module": "CommonJS",
     "target": "es2017",
     "esModuleInterop": true,
-    "strict": true
-  }
+    "strict": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": ["prisma/seed.ts"],
+  "exclude": ["node_modules"]
 }

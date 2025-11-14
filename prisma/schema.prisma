@@ -10,56 +10,107 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+//
+// =============== HOTEL MODEL ===============
+//
+model Hotel {
+  id       String    @id
+  name     String
+
+  users     User[]
+  rooms     Room[]
+  guests    Guest[]
+  bookings  Booking[]
+}
+
+//
+// =============== USER MODEL ===============
+//
 model User {
   id       String @id @default(cuid())
   username String @unique
   password String
   role     String
+
+  hotel   Hotel  @relation(fields: [hotelId], references: [id])
+  hotelId String
 }
 
+//
+// =============== ROOM MODEL ===============
+//
 model Room {
   id          String       @id
   type        String
   floor       Int
   status      RoomStatus
   price       Float        @default(0)
+
+  hotel   Hotel @relation(fields: [hotelId], references: [id])
+  hotelId String
+
   bookedRooms BookedRoom[]
 }
 
-model Booking {
-  id                String        @id @default(cuid())
-  title             String
-  start             DateTime
-  end               DateTime
-  guest             Guest         @relation(fields: [guestId], references: [id])
-  guestId           String
-  status            BookingStatus
-  paymentStatus     PaymentStatus @default(pending)
-  paymentMethod     PaymentMethod @default(bank_transfer)
-  isPaymentConfirmed Boolean       @default(false)
-  totalPrice        Float @default(0) // New field for total price
-  notes             String?
-  bookedRooms       BookedRoom[]
-}
-
-model BookedRoom {
-  id        String   @id @default(cuid())
-  booking   Booking  @relation(fields: [bookingId], references: [id])
-  bookingId String
-  room      Room     @relation(fields: [roomId], references: [id])
-  roomId    String
-  quantity  Int      @default(1) // In case we want to book multiple of the same room type
-  price     Float // Price of the room at the time of booking
-}
-
+//
+// =============== GUEST MODEL ===============
+//
 model Guest {
   id       String    @id @default(cuid())
   name     String
   email    String    @unique
   phone    String
+
+  hotel   Hotel @relation(fields: [hotelId], references: [id])
+  hotelId String
+
   bookings Booking[]
 }
 
+//
+// =============== BOOKING MODEL ===============
+//
+model Booking {
+  id                 String         @id @default(cuid())
+  title              String
+  start              DateTime
+  end                DateTime
+  status             BookingStatus
+  totalPrice         Float          @default(0)
+  notes              String?
+
+  hotel   Hotel @relation(fields: [hotelId], references: [id])
+  hotelId String
+
+  guest    Guest    @relation(fields: [guestId], references: [id])
+  guestId  String
+
+  paymentStatus     PaymentStatus @default(pending)
+  paymentMethod     PaymentMethod @default(bank_transfer)
+  isPaymentConfirmed Boolean       @default(false)
+
+  bookedRooms       BookedRoom[]
+}
+
+//
+// =============== BOOKED ROOM MODEL ===============
+//
+model BookedRoom {
+  id        String   @id @default(cuid())
+
+  booking   Booking  @relation(fields: [bookingId], references: [id])
+  bookingId String
+
+  room      Room     @relation(fields: [roomId], references: [id])
+  roomId    String
+
+  quantity  Int      @default(1)
+  price     Float
+}
+
+//
+// =============== ENUMS ===============
+//
 enum RoomStatus {
   cleaning
   maintenance

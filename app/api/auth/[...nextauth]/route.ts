@@ -31,6 +31,7 @@ export const authOptions = {
           username: user.username,
           name: user.username,
           role: user.role,
+          hotelId: user.hotelId,
         };
       },
     }),
@@ -42,14 +43,16 @@ export const authOptions = {
     strategy: 'jwt' as const,
   },
   callbacks: {
-    async jwt({ token, user }: { token: JWT; user: User }) {
+    async jwt({ token, user }: { token: JWT; user: User & { hotelId?: string } }) {
       if (user) {
         token.role = user.role;
+        token.hotelId = user.hotelId;
       }
       return token;
     },
-    async session({ session, token }: { session: Session; token: JWT }) {
+    async session({ session, token }: { session: Session & { user: { hotelId?: string } }; token: JWT }) {
       session.user.role = token.role;
+      session.user.hotelId = token.hotelId as string;
       return session;
     },
   },

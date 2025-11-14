@@ -5,6 +5,7 @@ import { X, Save, Trash2, LogIn, LogOut } from "lucide-react";
 import type { Booking, BookingStatus, Guest } from '../../types/booking';
 import type { Room } from '../../types/room';
 import { RoomStatus } from '@prisma/client';
+import { useHotel } from "@/app/context/HotelContext";
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -14,27 +15,25 @@ interface BookingModalProps {
   onSave: (booking: Booking) => void;
   onDelete: (id: string) => void;
   onCheckIn: (id: string) => void;
-  onCheckOut: (bookingId: string, roomId: string) => void; // Keep as is for now, but note for future
+  onCheckOut: (bookingId: string, roomId: string) => void;
 }
 
-// Helper to create initial form state
 const createInitialForm = (seedDate?: Date | null): Partial<Booking> => {
   const baseDate = seedDate ?? new Date();
   return {
     start: baseDate,
     end: addDays(baseDate, 1),
     guest: { name: "", email: "", phone: "" },
-    status: "checked_in", // Changed to checked_in
+    status: "checked_in",
     isPaymentConfirmed: false,
     paymentStatus: "pending",
     paymentMethod: "bank_transfer",
-    totalPrice: 0, // Use totalPrice
+    totalPrice: 0,
     notes: "",
-    bookedRooms: [], // Initialize bookedRooms
+    bookedRooms: [],
   };
 };
 
-// Helper to calculate total price
 const calculateTotalPrice = (
   start: Date | undefined,
   end: Date | undefined,
@@ -65,26 +64,26 @@ export default function BookingModal({
   onCheckIn,
   onCheckOut,
 }: BookingModalProps) {
+  const { hotelId, setHotelId } = useHotel(); // Get setHotelId from context
   const [form, setForm] = useState<Partial<Booking>>(() =>
     createInitialForm(defaultDate)
   );
 
   const [errorMessage, setErrorMessage] = useState<string>("");
-  const [selectedRoomToAdd, setSelectedRoomToAdd] = useState<string>(''); // New state for adding rooms
+  const [selectedRoomToAdd, setSelectedRoomToAdd] = useState<string>('');
 
   const [availableRoomsForPeriod, setAvailableRoomsForPeriod] = useState<Room[]>([]);
   const [isFetchingRooms, setIsFetchingRooms] = useState(false);
 
-  // Reset form when modal opens or booking/defaultDate changes
   useEffect(() => {
-    if (isOpen) { // Only run when modal opens
+    if (isOpen) {
       if (booking) {
         setForm({
           ...booking,
           bookedRooms: booking.bookedRooms || [],
           totalPrice: booking.totalPrice || 0,
         });
-      } else { // New booking
+      } else {
         const initialForm = createInitialForm(defaultDate);
         const calculatedPrice = calculateTotalPrice(initialForm.start, initialForm.end, initialForm.bookedRooms);
         setForm({
@@ -92,36 +91,59 @@ export default function BookingModal({
           totalPrice: calculatedPrice,
         });
       }
-    } else { // When modal closes, reset form to initial state
-      setForm(createInitialForm(defaultDate)); // Reset form when modal closes
+    } else {
+      setForm(createInitialForm(defaultDate));
     }
   }, [booking, defaultDate, isOpen]);
 
-  // Fetch available rooms based on selected dates
+  // Effect to ensure check-out date is always after check-in date
+  useEffect(() => {
+    if (form.start && form.end) {
+      const startDate = new Date(form.start);
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(form.end);
+      endDate.setHours(0, 0, 0, 0);
+
+      if (endDate <= startDate) {
+        setForm(prev => {
+          const newEnd = addDays(startDate, 1);
+          const newTotalPrice = calculateTotalPrice(prev.start, newEnd, prev.bookedRooms);
+          return { ...prev, end: newEnd, totalPrice: newTotalPrice };
+        });
+      }
+    }
+  }, [form.start, form.end, form.bookedRooms]); // Added form.end and form.bookedRooms to dependencies to recalculate price correctly
+
   useEffect(() => {
     const fetchAvailableRooms = async () => {
-      if (!form.start || !form.end) return;
+      if (!form.start || !form.end || !hotelId) {
+        if (!hotelId) console.warn("No hotelId available, skipping fetch for available rooms.");
+        return;
+      }
 
       setIsFetchingRooms(true);
       try {
         const queryParams = new URLSearchParams();
-        // Set start and end dates to 12 PM for API call
         const startDate = new Date(form.start);
         startDate.setHours(12, 0, 0, 0);
         const endDate = new Date(form.end);
         endDate.setHours(12, 0, 0, 0);
 
-        queryParams.append('status', 'available_today'); // Use the dynamic availability filter
+        queryParams.append('status', 'available_today');
         queryParams.append('checkInDate', startDate.toISOString());
         queryParams.append('checkOutDate', endDate.toISOString());
 
-        const res = await fetch(`/api/rooms?${queryParams.toString()}`);
+        const res = await fetch(`/api/rooms?${queryParams.toString()}`, {
+          headers: {
+            'X-Hotel-ID': hotelId,
+          },
+        });
         if (!res.ok) {
           throw new Error(`Error fetching available rooms: ${res.statusText}`);
         }
-        const data: Room[] = await res.json();
-        // Filter out rooms already selected in the form
-        const filteredData = data.filter(room => !form.bookedRooms?.some(br => br.roomId === room.id));
+        const data = await res.json();
+        const rooms = Array.isArray(data) ? data : [];
+        const filteredData = rooms.filter(room => !form.bookedRooms?.some(br => br.roomId === room.id));
         setAvailableRoomsForPeriod(filteredData);
       } catch (error: any) {
         console.error("Error fetching available rooms:", error);
@@ -132,12 +154,12 @@ export default function BookingModal({
     };
 
     fetchAvailableRooms();
-  }, [form.start, form.end, form.bookedRooms]); // Re-fetch when dates or already booked rooms change
+  }, [form.start, form.end, form.bookedRooms, hotelId]);
 
   if (!isOpen) return null;
 
   const handleCloseModal = () => {
-    setErrorMessage(""); // Clear error on close
+    setErrorMessage("");
     onClose();
   };
 
@@ -165,8 +187,8 @@ export default function BookingModal({
         const newBookedRooms = [...(prev.bookedRooms || []), {
           roomId: roomToAdd.id,
           price: roomToAdd.price,
-          quantity: 1, // Default quantity to 1
-          room: roomToAdd, // Store room details for display
+          quantity: 1,
+          room: roomToAdd,
         }];
         const newTotalPrice = calculateTotalPrice(prev.start, prev.end, newBookedRooms);
         return {
@@ -175,7 +197,7 @@ export default function BookingModal({
           totalPrice: newTotalPrice,
         };
       });
-      setSelectedRoomToAdd(''); // Clear selection
+      setSelectedRoomToAdd('');
     }
   };
 
@@ -191,44 +213,45 @@ export default function BookingModal({
     });
   };
 
-  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newStart = new Date(e.target.value);
-
-    setForm((prev) => {
-      let adjustedEnd = prev.end ?? addDays(newStart, 1);
-      if (adjustedEnd < newStart) {
-        adjustedEnd = addDays(newStart, 1); // Auto-adjust
-      }
-      const newTotalPrice = calculateTotalPrice(newStart, adjustedEnd, prev.bookedRooms);
-      return { ...prev, start: newStart, end: adjustedEnd, totalPrice: newTotalPrice };
-    });
-  };
-
-  const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedEnd = new Date(e.target.value); // original selected date
-
-    setForm((prev) => {
-      let adjustedEnd = selectedEnd; // use 'let' so we can modify
-      let startDate = prev.start;
-
-      if (prev.start && selectedEnd < prev.start) {
-        // Auto-adjust if user selects earlier date
-        adjustedEnd = prev.start; // end date cannot be before start
-        setErrorMessage("Check-out date adjusted to match check-in date.");
-      } else {
-        setErrorMessage("");
-      }
-
-      const newTotalPrice = calculateTotalPrice(startDate, adjustedEnd, prev.bookedRooms);
-
-      return { 
-        ...prev, 
-        end: adjustedEnd, 
-        totalPrice: newTotalPrice 
-      };
-    });
-  };
-
+    const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newStart = new Date(e.target.value);
+      newStart.setHours(0, 0, 0, 0); // Normalize to start of day
+  
+      setForm((prev) => {
+              const nextDayAfterStart = addDays(newStart, 1);
+              const adjustedEnd = nextDayAfterStart; // Always set to the next day
+        
+              const newTotalPrice = calculateTotalPrice(newStart, adjustedEnd, prev.bookedRooms);
+              return { ...prev, start: newStart, end: adjustedEnd, totalPrice: newTotalPrice };
+            });
+          };  
+    const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const selectedEnd = new Date(e.target.value);
+      selectedEnd.setHours(0, 0, 0, 0); // Normalize to start of day
+  
+      setForm((prev) => {
+        const startDate = prev.start ? new Date(prev.start) : new Date();
+        startDate.setHours(0, 0, 0, 0); // Normalize to start of day
+  
+        let adjustedEnd = selectedEnd;
+  
+        // Check-out date cannot be same as or before check-in date
+        if (adjustedEnd <= startDate) {
+          adjustedEnd = addDays(startDate, 1);
+          setErrorMessage("Check-out date cannot be on or before check-in date. Adjusted to next day.");
+        } else {
+          setErrorMessage("");
+        }
+  
+        const newTotalPrice = calculateTotalPrice(startDate, adjustedEnd, prev.bookedRooms);
+  
+        return {
+          ...prev,
+          end: adjustedEnd,
+          totalPrice: newTotalPrice,
+        };
+      });
+    };
 
   const handleSubmit = () => {
     setErrorMessage("");
@@ -238,7 +261,6 @@ export default function BookingModal({
       return;
     }
 
-    // Validate start date not in past
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     if (currentStart < today && !booking?.id) {
@@ -246,13 +268,11 @@ export default function BookingModal({
       return;
     }
 
-    // Validate end date >= start date
     if (currentEnd < currentStart) {
       setErrorMessage("Check-out date must be equal to or later than check-in date.");
       return;
     }
 
-    // For new bookings, require payment confirmation
     if (!booking && !form.isPaymentConfirmed) {
       setErrorMessage("Please confirm payment has been received to create the booking.");
       return;
@@ -260,7 +280,7 @@ export default function BookingModal({
 
     const bookingPayload: Booking = {
       id: booking?.id ?? Date.now().toString(),
-      title: `${form.guest.name} – ${form.bookedRooms?.length} Room(s)`, // Updated title
+      title: `${form.guest.name} – ${form.bookedRooms?.length} Room(s)`,
       start: currentStart,
       end: currentEnd,
       guest: form.guest,
@@ -268,13 +288,13 @@ export default function BookingModal({
       isPaymentConfirmed: form.isPaymentConfirmed ?? false,
       paymentStatus: form.paymentStatus ?? "pending",
       paymentMethod: form.paymentMethod ?? "bank_transfer",
-      totalPrice: form.totalPrice ?? 0, // Use totalPrice
+      totalPrice: form.totalPrice ?? 0,
       notes: form.notes,
       bookedRooms: form.bookedRooms?.map(br => ({
         roomId: br.roomId,
         price: br.price,
         quantity: br.quantity,
-      })) || [], // Only send necessary fields for bookedRooms
+      })) || [],
     };
 
     onSave(bookingPayload);
@@ -283,23 +303,21 @@ export default function BookingModal({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
       <div className="bg-white text-gray-900 rounded-xl shadow-xl max-w-2xl w-full max-h-screen overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold">
-            {booking ? "Edit Booking" : "New Booking"}
-          </h2>
-          <button 
-            onClick={handleCloseModal} 
-            className="p-2 hover:bg-gray-100 rounded-lg"
-          >
-            X
-          </button>
-        </div>
+                <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                  <h2 className="text-xl font-semibold">
+                    {booking ? "Edit Booking" : "New Booking"}
+                  </h2>
+                  <button
+                    onClick={handleCloseModal}
+                    className="p-2 hover:bg-gray-100 rounded-lg"
+                  >
+                    X
+                  </button>
+                </div>
         
-
-        <div className="p-6 space-y-5">
-          {/* Guest Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
+                        <div className="p-6 space-y-5">
+        
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Guest Name</label>
               <input
                 type="text"
@@ -335,7 +353,6 @@ export default function BookingModal({
             />
           </div>
 
-          {/* Dates */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Check-in</label>
@@ -353,14 +370,13 @@ export default function BookingModal({
               <input
                 type="date"
                 value={format(currentEnd, "yyyy-MM-dd")}
-                min={format(currentStart, "yyyy-MM-dd")}
+                min={format(addDays(currentStart, 1), "yyyy-MM-dd")}
                 onChange={handleEndDateChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
               />
             </div>
           </div>
 
-          {/* Room Selection */}
           <div className="space-y-3">
             <label className="block text-sm font-medium text-gray-700 mb-1">Rooms</label>
             <div className="flex gap-2">
@@ -445,16 +461,15 @@ export default function BookingModal({
             </div>
           </div>
 
-          {/* Payment Details */}
-          {!booking && ( // Only show for new bookings
+          {!booking && (
             <div className="space-y-3 border-t border-gray-200 pt-5">
               <h3 className="text-lg font-semibold text-gray-800">Payment Details</h3>
               <div className="bg-gray-50 p-4 rounded-lg text-sm text-gray-700">
-                <p className="font-medium">Bank Transfer Instructions:</p>
-                <p>Bank Name: Example Bank</p>
-                <p>Account Name: Hotel PMS</p>
-                <p>Account Number: 1234567890</p>
-                <p>SWIFT Code: EXAMPLESWIFT</p>
+                {/* <p className="font-medium">Bank Transfer Instructions:</p> */}
+                <p>ESPEES</p>
+                <p>Merchant Code: OMNIA HOTELS</p>
+                {/* <p>Account Number: 1234567890</p>
+                <p>SWIFT Code: EXAMPLESWIFT</p> */}
                 <p className="mt-2">Please transfer the total amount to the account above.</p>
               </div>
               <div className="flex items-center">
