@@ -5,14 +5,20 @@ import prisma from '../../lib/prisma';
 export async function GET(request: NextRequest) {
   const hotelId = request.headers.get('X-Hotel-ID');
   if (!hotelId) {
+    console.error('API: X-Hotel-ID header is missing.');
     return NextResponse.json({ message: 'X-Hotel-ID header is required' }, { status: 400 });
   }
+  console.log('API: Received X-Hotel-ID:', hotelId);
 
   try {
     const searchParams = request.nextUrl.searchParams;
     const statusFilter = searchParams.get('status') || 'all';
     const typeFilter = searchParams.get('type') || 'all';
     const floorFilter = searchParams.get('floor') || 'all';
+
+    console.log('API: Received statusFilter:', statusFilter);
+    console.log('API: Received typeFilter:', typeFilter);
+    console.log('API: Received floorFilter:', floorFilter);
 
     let where: any = { hotelId };
 
@@ -44,6 +50,8 @@ export async function GET(request: NextRequest) {
 
       where.status = 'ready';
 
+      console.log('API: Applying available_today logic. Requested Check-in:', requestedCheckIn, 'Check-out:', requestedCheckOut);
+
       const bookedRoomsForPeriod = await prisma.bookedRoom.findMany({
         where: {
           booking: {
@@ -71,6 +79,7 @@ export async function GET(request: NextRequest) {
       });
 
       const occupiedRoomIds = bookedRoomsForPeriod.map((br) => br.roomId);
+      console.log('API: Occupied Room IDs for period:', occupiedRoomIds);
 
       where.id = {
         notIn: occupiedRoomIds,
@@ -87,10 +96,13 @@ export async function GET(request: NextRequest) {
       ];
     }
 
+    console.log('API: Final Prisma where clause:', JSON.stringify(where, null, 2));
+
     const rooms = await prisma.room.findMany({
       where,
     });
 
+    console.log('API: Number of rooms found:', rooms.length);
     return NextResponse.json(rooms);
   } catch (error) {
     console.error('Error fetching rooms:', error);

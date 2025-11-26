@@ -62,14 +62,14 @@ export default function StaffLoginPage() {
                 <Mail className="w-4 h-4 inline mr-1" />
                 Username
               </label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
-                placeholder="housekeeper"
-                required
-              />
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="admin"
+              required
+            />
             </div>
 
             <div>
@@ -81,7 +81,7 @@ export default function StaffLoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="••••••••"
                 required
               />
@@ -114,15 +114,6 @@ export default function StaffLoginPage() {
             </a>
           </div>
           </form>
-
-          {/* Demo Credentials */}
-          <div className="mt-8 p-4 bg-gray-50 rounded-lg text-xs text-gray-600">
-            <p className="font-semibold mb-2">Demo Accounts:</p>
-            <ul className="space-y-1">
-              <li><strong>housekeeper</strong> → housekeeperpassword</li>
-              <li><strong>maintenance</strong> → maintenancepassword</li>
-            </ul>
-          </div>
         </div>
       </div>
     </div>

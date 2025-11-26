@@ -7,6 +7,18 @@ import type { Room } from '../../types/room';
 import { RoomStatus } from '@prisma/client';
 import { useHotel } from "@/app/context/HotelContext";
 
+interface Hotel {
+  id: string;
+  name: string;
+}
+
+const hotels: Hotel[] = [
+  { id: "clx1s2q5t000008l3g6f6e2z1", name: "Omnia Towers" },
+  { id: "clx1s2q5t000108l3h2g2a2b2", name: "Omnia Hotels & Suites" },
+  { id: "clx1s2q5t000208l3f6g6e2z3", name: "Omnia Court" },
+  { id: "clx1s2q5t000308l3h2g2a2b4", name: "Omnia Castle" },
+];
+
 interface BookingModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -64,7 +76,7 @@ export default function BookingModal({
   onCheckIn,
   onCheckOut,
 }: BookingModalProps) {
-  const { hotelId, setHotelId } = useHotel(); // Get setHotelId from context
+  const { hotelId, setHotelId } = useHotel();
   const [form, setForm] = useState<Partial<Booking>>(() =>
     createInitialForm(defaultDate)
   );
@@ -75,6 +87,9 @@ export default function BookingModal({
   const [availableRoomsForPeriod, setAvailableRoomsForPeriod] = useState<Room[]>([]);
   const [isFetchingRooms, setIsFetchingRooms] = useState(false);
 
+  const [selectedHotelInModal, setSelectedHotelInModal] = useState<string>(hotelId || hotels[0].id);
+  const [isHotelDropdownOpen, setIsHotelDropdownOpen] = useState(false);
+
   useEffect(() => {
     if (isOpen) {
       if (booking) {
@@ -83,6 +98,10 @@ export default function BookingModal({
           bookedRooms: booking.bookedRooms || [],
           totalPrice: booking.totalPrice || 0,
         });
+        // If editing an existing booking, the hotelId might be part of the booking object
+        // For now, we assume the booking is for the currently selected hotel in context
+        // or we default to the first hotel if context is empty.
+        setSelectedHotelInModal(hotelId || hotels[0].id);
       } else {
         const initialForm = createInitialForm(defaultDate);
         const calculatedPrice = calculateTotalPrice(initialForm.start, initialForm.end, initialForm.bookedRooms);
@@ -90,11 +109,14 @@ export default function BookingModal({
           ...initialForm,
           totalPrice: calculatedPrice,
         });
+        // For new bookings, default to the hotel selected in context or the first hotel
+        setSelectedHotelInModal(hotelId || hotels[0].id);
       }
     } else {
       setForm(createInitialForm(defaultDate));
+      setErrorMessage(""); // Clear error message on close
     }
-  }, [booking, defaultDate, isOpen]);
+  }, [booking, defaultDate, isOpen, hotelId]); // Added hotelId to dependencies
 
   // Effect to ensure check-out date is always after check-in date
   useEffect(() => {
@@ -116,8 +138,8 @@ export default function BookingModal({
 
   useEffect(() => {
     const fetchAvailableRooms = async () => {
-      if (!form.start || !form.end || !hotelId) {
-        if (!hotelId) console.warn("No hotelId available, skipping fetch for available rooms.");
+      if (!form.start || !form.end || !selectedHotelInModal) {
+        if (!selectedHotelInModal) console.warn("No hotelId available, skipping fetch for available rooms.");
         return;
       }
 
@@ -135,7 +157,7 @@ export default function BookingModal({
 
         const res = await fetch(`/api/rooms?${queryParams.toString()}`, {
           headers: {
-            'X-Hotel-ID': hotelId,
+            'X-Hotel-ID': selectedHotelInModal, // Use selectedHotelInModal here
           },
         });
         if (!res.ok) {
@@ -154,12 +176,13 @@ export default function BookingModal({
     };
 
     fetchAvailableRooms();
-  }, [form.start, form.end, form.bookedRooms, hotelId]);
+  }, [form.start, form.end, form.bookedRooms, selectedHotelInModal]); // Added selectedHotelInModal to dependencies
 
   if (!isOpen) return null;
 
   const handleCloseModal = () => {
     setErrorMessage("");
+    setIsHotelDropdownOpen(false); // Close dropdown when modal closes
     onClose();
   };
 
@@ -313,6 +336,52 @@ export default function BookingModal({
                   >
                     X
                   </button>
+                </div>
+
+                {/* Hotel Selection Dropdown */}
+                <div className="relative p-6 border-b border-gray-200">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Select Hotel</label>
+                  <button
+                    type="button"
+                    className="flex items-center justify-between w-full px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    onClick={() => setIsHotelDropdownOpen(!isHotelDropdownOpen)}
+                  >
+                    {hotels.find(h => h.id === selectedHotelInModal)?.name || "Select a Hotel"}
+                    <svg
+                      className="-mr-1 ml-2 h-5 w-5"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </button>
+
+                  {isHotelDropdownOpen && (
+                    <div className="absolute z-10 mt-2 w-full rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                      <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="menu-button">
+                        {hotels.map((hotel) => (
+                          <button
+                            key={hotel.id}
+                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                            role="menuitem"
+                            onClick={() => {
+                              setSelectedHotelInModal(hotel.id);
+                              setHotelId(hotel.id);
+                              setIsHotelDropdownOpen(false);
+                            }}
+                          >
+                            {hotel.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
         
                         <div className="p-6 space-y-5">

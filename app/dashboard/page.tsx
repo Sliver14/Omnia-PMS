@@ -24,30 +24,46 @@ export default function DashboardPage() {
     [bookingsData]
   );
 
+  // Today
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
   // Metrics
   const totalRooms = rooms.length;
-  const availableRoomsCount = rooms.filter((r) => r.status === 'available').length;
-  const cleaningRooms = rooms.filter((r) => r.status === 'cleaning').length;
-  const maintenanceRooms = rooms.filter((r) => r.status === 'maintenance').length;
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // Real available rooms logic (like in RoomGrid)
+  const availableRoomsCount = useMemo(() => {
+    return rooms.filter((room) => {
+      // Room is unavailable today if it has an active booking or is in cleaning/maintenance
+      const hasActiveBooking = bookings.some(
+        (booking) =>
+          booking.status !== 'cancelled' &&
+          booking.bookedRooms?.some((br) => br.room?.id === room.id) &&
+          booking.start <= today &&
+          booking.end >= today
+      );
+      return !hasActiveBooking && room.status === 'ready';
+    }).length;
+  }, [rooms, bookings, today]);
 
-  const checkInsToday = bookings.filter(
-    (b) => b.start.toDateString() === today.toDateString() && b.status === 'confirmed'
-  ).length;
+  const cleaningRooms = useMemo(() => rooms.filter((r) => r.status === 'cleaning').length, [rooms]);
+  const maintenanceRooms = useMemo(() => rooms.filter((r) => r.status === 'maintenance').length, [rooms]);
 
-  const checkOutsToday = bookings.filter(
-    (b) => b.end.toDateString() === today.toDateString() && b.status === 'checked_in'
-  ).length;
+  const checkInsToday = useMemo(
+    () => bookings.filter((b) => b.start.toDateString() === today.toDateString() && b.status === 'confirmed').length,
+    [bookings, today]
+  );
 
-  if (loading) {
-    return <p className="text-gray-600">Loading dashboard...</p>;
-  }
+  const checkOutsToday = useMemo(
+    () => bookings.filter((b) => b.end.toDateString() === today.toDateString() && b.status === 'checked_in').length,
+    [bookings, today]
+  );
 
-  if (error) {
-    return <p className="text-red-500">Error: {error.message}</p>;
-  }
+  if (loading) return <p className="text-gray-600">Loading dashboard...</p>;
+  if (error) return <p className="text-red-500">Error: {error.message}</p>;
 
   return (
     <div className="space-y-6 text-gray-900">
@@ -128,12 +144,8 @@ export default function DashboardPage() {
                 {bookings.slice(0, 5).map((booking) => (
                   <tr key={booking.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{booking.guest.name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {booking.bookedRooms?.map((br) => br.room?.id).join(', ') || 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {format(booking.start, 'MMM d')} - {format(booking.end, 'MMM d')}
-                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{booking.bookedRooms?.map(br => br.room?.id).join(', ') || 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{format(booking.start, 'MMM d')} - {format(booking.end, 'MMM d')}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{booking.status}</td>
                   </tr>
                 ))}

@@ -7,7 +7,7 @@ import RoomFilters, { type RoomFilterState } from '../rooms/RoomFilters';
 
 export default function RoomsPage() {
   const [filters, setFilters] = useState<RoomFilterState>({
-    status: 'all',
+    status: 'available_today',
     type: 'all',
     floor: 'all',
   });

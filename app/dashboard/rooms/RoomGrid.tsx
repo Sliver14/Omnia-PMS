@@ -20,6 +20,8 @@ export default function RoomGrid({ filters, searchTerm }: { filters: RoomFilterS
       return;
     }
 
+    console.log('RoomGrid: Fetching rooms for hotelId:', hotelId);
+
     const fetchRooms = async () => {
       setLoading(true);
       setError(null);
@@ -37,6 +39,8 @@ export default function RoomGrid({ filters, searchTerm }: { filters: RoomFilterS
         if (searchTerm) {
           queryParams.append('search', searchTerm);
         }
+
+        console.log('RoomGrid: Query Params:', queryParams.toString());
 
         const res = await fetch(`/api/rooms?${queryParams.toString()}`, {
           headers: {

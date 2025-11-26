@@ -66,7 +66,9 @@ export default function LoginPage() {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg 
+                          text-gray-900 placeholder-gray-400
+                          focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="admin"
                 required
               />
@@ -81,7 +83,9 @@ export default function LoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg 
+                          text-gray-900 placeholder-gray-400
+                          focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="••••••••"
                 required
               />
@@ -114,15 +118,6 @@ export default function LoginPage() {
             <a href="/staff/login" className="text-sm text-blue-600 hover:underline">
               Are you a staff member? Sign in here.
             </a>
-          </div>
-
-          {/* Demo Credentials */}
-          <div className="mt-8 p-4 bg-gray-50 rounded-lg text-xs text-gray-600">
-            <p className="font-semibold mb-2">Demo Accounts:</p>
-            <ul className="space-y-1">
-              <li><strong>admin</strong> → adminpassword</li>
-              <li><strong>frontdesk</strong> → frontdeskpassword</li>
-            </ul>
           </div>
         </div>
       </div>
